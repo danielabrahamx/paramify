@@ -59,8 +59,8 @@ const idlFactory = ({ IDL }) => {
       Ok: PayoutResult,
       Err: IDL.Text
     })], []),
-    set_flood_level: IDL.Func([IDL.Float64, IDL.Opt(IDL.Text)], [IDL.Variant({
-      Ok: IDL.Text,
+    set_flood_level: IDL.Func([IDL.Int64], [IDL.Variant({
+      Ok: IDL.Null,
       Err: IDL.Text
     })], []),
     set_threshold: IDL.Func([IDL.Float64], [IDL.Variant({
@@ -77,12 +77,14 @@ const idlFactory = ({ IDL }) => {
     })], []),
     
     // Query methods
-    get_policy: IDL.Func([IDL.Opt(IDL.Principal)], [IDL.Opt(Policy)], ['query']),
-    get_flood_data: IDL.Func([], [FloodData], ['query']),
-    get_system_status: IDL.Func([], [SystemStatus], ['query']),
-    is_payout_eligible: IDL.Func([IDL.Opt(IDL.Principal)], [IDL.Bool], ['query']),
+    get_policy: IDL.Func([IDL.Nat64], [IDL.Opt(Policy)], ['query']),
+    get_policy_by_holder: IDL.Func([IDL.Principal], [IDL.Opt(Policy)], ['query']),
+    get_flood_level: IDL.Func([], [IDL.Int64], ['query']),
+    get_flood_threshold: IDL.Func([], [IDL.Nat64], ['query']),
+    get_policy_stats: IDL.Func([], [IDL.Nat64, IDL.Nat64, IDL.Nat64], ['query']),
+    is_payout_eligible: IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
     get_admin: IDL.Func([], [IDL.Principal], ['query']),
-    get_oracles: IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    get_oracle_updaters: IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
   });
 };
 
@@ -170,11 +172,11 @@ class ICPOracle {
   
   async updateCanisterFloodLevel(floodData) {
     try {
+      // Convert float to int64 (multiply by 1e12 for precision)
+      const floodLevelInt = Math.round(floodData.level * 1e12);
+      
       // Call canister method to update flood level
-      const result = await this.actor.set_flood_level(
-        floodData.level,
-        [floodData.stationId]
-      );
+      const result = await this.actor.set_flood_level(floodLevelInt);
       
       if (result.Ok) {
         this.updateCount++;
@@ -200,22 +202,28 @@ class ICPOracle {
   
   async getSystemStatus() {
     try {
-      const status = await this.actor.get_system_status();
+      const [floodLevel, threshold, stats] = await Promise.all([
+        this.actor.get_flood_level(),
+        this.actor.get_flood_threshold(),
+        this.actor.get_policy_stats()
+      ]);
+      
+      // Destructure the tuple properly
+      const [total, active, paidOut] = stats;
       
       console.log('\n📊 System Status:');
-      console.log(`   Total Policies: ${status.total_policies}`);
-      console.log(`   Active Policies: ${status.active_policies}`);
-      console.log(`   Total Payouts: ${status.total_payouts}`);
-      console.log(`   Contract Balance: ${Number(status.contract_balance) / 100_000_000} ICP`);
-      console.log(`   Current Flood Level: ${status.current_flood_level.toFixed(2)} ft`);
-      console.log(`   Payout Threshold: ${status.flood_threshold.toFixed(2)} ft`);
+      console.log(`   Total Policies: ${total.toString()}`);
+      console.log(`   Active Policies: ${active.toString()}`);
+      console.log(`   Total Payouts: ${paidOut.toString()}`);
+      console.log(`   Current Flood Level: ${(Number(floodLevel) / 1e12).toFixed(2)} ft`);
+      console.log(`   Payout Threshold: ${(Number(threshold) / 1e12).toFixed(2)} ft`);
       
       // Check if payout conditions are met
-      if (status.current_flood_level > status.flood_threshold) {
+      if (Number(floodLevel) > Number(threshold)) {
         console.log('⚠️  WARNING: Flood level exceeds threshold! Payouts may be triggered.');
       }
       
-      return status;
+      return { floodLevel, threshold, stats: { total, active, paidOut } };
       
     } catch (error) {
       console.error('❌ Failed to get system status:', error);
