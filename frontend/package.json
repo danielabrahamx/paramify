@@ -7,12 +7,23 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@dfinity/agent": "0.21.0",
-    "@dfinity/auth-client": "0.21.0",
-    "@dfinity/candid": "0.21.0",
-    "@dfinity/principal": "0.21.0",
+    "@dfinity/agent": "^0.20.0",
+    "@dfinity/auth-client": "^0.20.0",
+    "@dfinity/candid": "^0.20.0",
+    "@dfinity/principal": "^0.20.0",
+    "@dfinity/identity": "^0.20.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "@radix-ui/react-alert-dialog": "^1.0.5",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-label": "^2.0.2",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-toast": "^1.1.5",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "lucide-react": "^0.294.0",
+    "tailwind-merge": "^2.2.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",

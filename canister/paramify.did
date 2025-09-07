@@ -1,0 +1,54 @@
+type Policy = record {
+  policyholder: principal;
+  premium: nat64;
+  coverage: nat64;
+  active: bool;
+  paid_out: bool;
+  created_at: nat64;
+  flood_level_at_creation: float64;
+};
+
+type FloodData = record {
+  level: float64;
+  threshold: float64;
+  last_updated: nat64;
+  station_id: text;
+};
+
+type SystemStatus = record {
+  total_policies: nat64;
+  active_policies: nat64;
+  total_payouts: nat64;
+  contract_balance: nat64;
+  current_flood_level: float64;
+  flood_threshold: float64;
+  last_oracle_update: nat64;
+};
+
+type CreatePolicyRequest = record {
+  coverage_amount: nat64;
+};
+
+type PayoutResult = record {
+  success: bool;
+  amount: nat64;
+  message: text;
+};
+
+service : {
+  // Update methods
+  create_policy: (CreatePolicyRequest) -> (variant { Ok: text; Err: text });
+  trigger_payout: () -> (variant { Ok: PayoutResult; Err: text });
+  set_flood_level: (float64, opt text) -> (variant { Ok: text; Err: text });
+  set_threshold: (float64) -> (variant { Ok: text; Err: text });
+  add_oracle: (principal) -> (variant { Ok: text; Err: text });
+  fund_contract: (nat64) -> (variant { Ok: text; Err: text });
+  
+  // Query methods
+  get_policy: (opt principal) -> (opt Policy) query;
+  get_flood_data: () -> (FloodData) query;
+  get_system_status: () -> (SystemStatus) query;
+  is_payout_eligible: (opt principal) -> (bool) query;
+  get_admin: () -> (principal) query;
+  get_oracles: () -> (vec principal) query;
+}

@@ -1,90 +1,31 @@
 {
   "version": 1,
-  "dfx": "0.29.0",
   "canisters": {
     "paramify_insurance": {
       "type": "rust",
-      "package": "paramify_insurance",
-      "candid": "icp-canister/src/paramify_insurance.did",
-      "declarations": {
-        "output": "frontend/src/declarations/paramify_insurance",
-        "bindings": [
-          "js",
-          "ts",
-          "did"
-        ],
-        "node_compatibility": true
-      },
-      "metadata": [
-        {
-          "name": "candid:service",
-          "path": "icp-canister/src/paramify_insurance.did"
-        }
-      ]
-    },
-    "oracle": {
-      "type": "rust",
-      "package": "oracle",
-      "candid": "src/canisters/oracle/oracle.did",
-      "declarations": {
-        "output": "frontend/src/declarations/oracle",
-        "bindings": [
-          "js",
-          "ts",
-          "did"
-        ],
-        "node_compatibility": true
-      }
-    },
-    "flood_data_storage": {
-      "type": "motoko",
-      "main": "icp-integration/src/flood_data_storage/main.mo",
-      "declarations": {
-        "output": "frontend/src/declarations/flood_data_storage",
-        "bindings": [
-          "js",
-          "ts",
-          "did"
-        ],
-        "node_compatibility": true
-      }
+      "package": "paramify_canister",
+      "candid": "canister/paramify.did"
     },
     "frontend": {
       "type": "assets",
-      "source": [
-        "frontend/dist"
-      ],
-      "declarations": {
-        "output": "frontend/src/declarations/frontend",
-        "bindings": [
-          "js",
-          "ts",
-          "did"
-        ],
-        "node_compatibility": true
-      }
+      "source": ["frontend/dist"],
+      "dependencies": ["paramify_insurance"]
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8000",
+      "type": "ephemeral"
+    },
+    "ic": {
+      "providers": ["https://ic0.app"],
+      "type": "persistent"
     }
   },
   "defaults": {
     "build": {
-      "packtool": "",
-      "args": ""
-    }
-  },
-  "output_env_file": ".env",
-  "networks": {
-    "local": {
-      "bind": "127.0.0.1:4943",
-      "type": "ephemeral",
-      "replica": {
-        "subnet_type": "system"
-      }
-    },
-    "ic": {
-      "providers": [
-        "https://ic0.app"
-      ],
-      "type": "persistent"
+      "args": "",
+      "packtool": ""
     }
   }
 }
