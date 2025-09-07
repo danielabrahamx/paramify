@@ -15,6 +15,7 @@ serde = { version = "1.0", features = ["derive"] }
 [dev-dependencies]
 ic-cdk-macros = "0.9"
 
+
 [profile.release]
 opt-level = 3
 lto = true

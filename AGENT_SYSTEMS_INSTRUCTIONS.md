@@ -1,279 +1,235 @@
-# Agent Systems Instructions for Paramify ICP Codebase
+# Agent Systems Instructions for Paramify Codebase
 
 ## Overview
-Paramify is a decentralized flood insurance platform built on the Internet Computer Protocol (ICP). The system uses real-time USGS water level data to automatically trigger insurance payouts when flood thresholds are exceeded. The architecture consists of ICP canisters (Rust/Motoko), a React frontend with Internet Identity authentication, and direct HTTP outcalls to external APIs.
+Paramify is a blockchain-based flood insurance protocol that uses real-time USGS water level data to automatically trigger insurance payouts when flood thresholds are exceeded. The system consists of smart contracts (Solidity), a backend service (Node.js), and frontend dashboards (React/TypeScript).
 
 ## Project Architecture
 
 <system_components>
-<icp_canisters directory="/src/canisters/">
-<canister name="insurance" type="main">Main insurance canister managing policies and payouts</canister>
-<canister name="oracle" type="data">Oracle canister fetching USGS flood data via HTTP outcalls</canister>
-<canister name="payments" type="financial">Payments canister handling ICRC-1 token transfers</canister>
-</icp_canisters>
+<smart_contracts directory="/contracts/">
+<contract name="Paramify.sol" type="main">Main insurance contract with dynamic threshold management</contract>
+<contract name="MockV3Aggregator.sol" type="oracle">Chainlink-compatible oracle for testing</contract>
+<contract name="Lock.sol" type="template">Template contract (can be ignored)</contract>
+</smart_contracts>
 
-<standalone_canister directory="/icp-canister/">
-<canister name="paramify_insurance" type="standalone">Complete insurance system in single canister</canister>
-<implementation>Rust with stable memory for persistence</implementation>
-<features>
-- Policy creation and management
-- Flood threshold monitoring
-- Automated payout processing
-- Admin and oracle role management
-</features>
-</standalone_canister>
+<backend_service directory="/backend/">
+<service name="server.js" type="api">Express API that fetches USGS data and manages oracle updates</service>
+<port>3001</port>
+<responsibilities>
+- Handles USGS API integration and blockchain oracle updates
+- Provides REST endpoints for frontend communication
+- Manages automatic flood data updates every 5 minutes
+</responsibilities>
+</backend_service>
 
 <frontend_application directory="/frontend/src/">
-<dashboard name="InsuracleDashboard.tsx" type="customer">Customer interface with Internet Identity authentication</dashboard>
-<dashboard name="InsuracleDashboardAdmin.tsx" type="admin">Admin interface for system management</dashboard>
-<library name="declarations/" type="generated">Auto-generated canister interfaces from Candid</library>
-<library name="lib/agent.ts" type="client">ICP agent configuration and authentication</library>
+<dashboard name="InsuracleDashboard.tsx" type="customer">Customer interface for buying insurance and claiming payouts</dashboard>
+<dashboard name="InsuracleDashboardAdmin.tsx" type="admin">Admin interface for threshold management and system administration</dashboard>
+<library name="lib/contract.ts" type="config">Contract addresses and ABI definitions</library>
+<library name="lib/usgsApi.ts" type="client">API client for backend services</library>
 </frontend_application>
 </system_components>
 
-## Critical Canister ID Management
+## Critical Contract Address Management
 
-<canister_id_warning>
-⚠️ IMPORTANT: Canister IDs are generated on first deployment and persist across restarts!
-</canister_id_warning>
+<contract_address_warning>
+⚠️ IMPORTANT: Contract addresses change on every deployment!
+</contract_address_warning>
 
-<canister_id_management>
-Canister IDs are automatically generated and stored in `.dfx/local/canister_ids.json`. The frontend automatically uses these IDs via generated declarations.
+<address_update_requirements>
+When Hardhat is restarted or contracts are redeployed, new addresses are generated. You MUST update:
 
-<deployment_workflow>
-<step number="1">Start ICP replica: `dfx start --clean --background`</step>
-<step number="2">Deploy canisters: `dfx deploy`</step>
-<step number="3">Generate frontend declarations: `dfx generate`</step>
-<step number="4">Start frontend: `cd frontend && npm run dev`</step>
-</deployment_workflow>
+<backend_config file="/backend/.env">
+```
+PARAMIFY_ADDRESS=<NEW_CONTRACT_ADDRESS>
+MOCK_ORACLE_ADDRESS=<NEW_ORACLE_ADDRESS>
+```
+</backend_config>
+
+<frontend_config file="/frontend/src/lib/contract.ts">
+```typescript
+export const PARAMIFY_ADDRESS = '<NEW_CONTRACT_ADDRESS>';
+export const MOCK_ORACLE_ADDRESS = '<NEW_ORACLE_ADDRESS>';
+```
+</frontend_config>
+</address_update_requirements>
+
+### Deployment Workflow
+
+<deployment_steps>
+<step number="1">Start Hardhat node: `npx hardhat node`</step>
+<step number="2">Deploy contracts: `npx hardhat run scripts/deploy.js --network localhost`</step>
+<step number="3">Update contract addresses in both backend and frontend</step>
+<step number="4">Restart backend service</step>
+<step number="5">Frontend will hot-reload automatically</step>
+</deployment_steps>
 
 <critical_note>
-⚠️ Canister IDs persist in .dfx/local/ - only change when using --clean flag or switching networks
+⚠️ Contract addresses change on EVERY deployment! Always update both backend/.env and frontend/src/lib/contract.ts
 </critical_note>
 
-## User Roles & Authentication
-
-<authentication_system>
-<internet_identity>
-<purpose>Primary authentication method for users</purpose>
-<features>
-<feature>Seamless login without private key management</feature>
-<feature>Hardware security key support</feature>
-<feature>Multi-device authentication</feature>
-<feature>Principal-based identity system</feature>
-</features>
-</internet_identity>
-
-<plug_wallet>
-<purpose>Alternative wallet for advanced users</purpose>
-<features>
-<feature>Browser extension wallet</feature>
-<feature>Direct canister interaction</feature>
-<feature>Token management</feature>
-</features>
-</plug_wallet>
-</authentication_system>
+## User Roles & Dashboards
 
 <dashboard_specifications>
 <customer_dashboard file="InsuracleDashboard.tsx">
 <purpose>End-user interface for flood insurance</purpose>
 <features>
-<feature>Buy insurance policies using Internet Identity</feature>
-<feature>View real-time flood levels from USGS API</feature>
-<feature>Claim payouts when flood threshold exceeded</feature>
-<feature>Monitor policy status and coverage</feature>
+<feature>Buy insurance policies (pay premium, set coverage amount)</feature>
+<feature>View current flood levels vs. threshold</feature>
+<feature>Claim payouts when conditions are met</feature>
+<feature>Monitor real-time USGS water data</feature>
 </features>
-<target_users>Insurance customers with Internet Identity</target_users>
+<target_users>Insurance customers</target_users>
 <key_functions>
-<function>purchasePolicy()</function>
-<function>claimPayout()</function>
-<function>checkEligibility()</function>
+<function>handleBuyInsurance()</function>
+<function>handleTriggerPayout()</function>
 </key_functions>
 </customer_dashboard>
 
 <admin_dashboard file="InsuracleDashboardAdmin.tsx">
-<purpose>System administration interface</purpose>
+<purpose>Insurance company/admin interface</purpose>
 <features>
 <feature>Manage flood thresholds dynamically</feature>
-<feature>Monitor system health and statistics</feature>
-<feature>View all policies and user data</feature>
-<feature>Update oracle data sources</feature>
+<feature>Fund the insurance contract</feature>
+<feature>Monitor system status and USGS data</feature>
+<feature>View contract balances and user policies</feature>
 </features>
 <access_control>
-<admin_principal>Principal-based admin role</admin_principal>
-<restrictions>Only admin principal can access management functions</restrictions>
+<admin_wallet>0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266</admin_wallet>
+<restrictions>Only specific admin wallet has access</restrictions>
 </access_control>
 <key_functions>
-<function>updateThreshold()</function>
-<function>getSystemStatus()</function>
-<function>manageOracle()</function>
+<function>handleUpdateThreshold()</function>
+<function>handleFundContract()</function>
 </key_functions>
 </admin_dashboard>
 </dashboard_specifications>
 
-## Data Flow & ICP Integration
+## Data Flow & Unit Conversions
 
-<icp_data_flow>
-<data_source order="1" name="USGS API">Real-time water level data in feet via HTTP outcalls</data_source>
-<processing order="2" name="Oracle Canister">Fetches and processes USGS data directly</processing>
-<storage order="3" name="Insurance Canister">Stores policies and flood data in stable memory</storage>
-<display order="4" name="Frontend">Displays data via generated canister interfaces</display>
-</icp_data_flow>
-
-<unit_conversions>
-<token_units>
-<factor>100,000,000</factor>
-<conversion>ICP Tokens = Amount × 100,000,000 (8 decimals)</conversion>
+<scaling_system>
+<scaling_formula>
+<factor>100,000,000,000</factor>
+<conversion>Contract Units = Feet × 100,000,000,000</conversion>
 <examples>
-<example input="1.0 ICP" output="100,000,000 e8s"/>
-<example input="0.1 ICP" output="10,000,000 e8s"/>
+<example input="4.24 ft" output="424,000,000,000 units"/>
+<example input="12 ft" output="1,200,000,000,000 units"/>
 </examples>
-</token_units>
+</scaling_formula>
+</scaling_system>
 
-<flood_units>
-<factor>1,000,000,000,000</factor>
-<conversion>Flood Units = Feet × 1,000,000,000,000 (12 decimals)</conversion>
-<examples>
-<example input="3.0 ft" output="3,000,000,000,000 units"/>
-<example input="4.24 ft" output="4,240,000,000,000 units"/>
-</examples>
-</flood_units>
-</unit_conversions>
+<data_flow>
+<data_source order="1" name="USGS API">Real-time water level data in feet</data_source>
+<processing order="2" name="Backend Processing">Converts feet to contract units and updates oracle</processing>
+<storage order="3" name="Smart Contract">Stores and compares values in contract units</storage>
+<display order="4" name="Frontend Display">Converts back to feet for user-friendly display</display>
+</data_flow>
 
 ## Network Configuration
 
 <network_environments>
-<local_development name="ICP Local">
-<replica_url>http://localhost:4943</replica_url>
-<internet_identity>http://localhost:4943?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai</internet_identity>
-<admin_principal>Auto-generated on first deployment</admin_principal>
-<cycles>Unlimited on local replica</cycles>
+<local_development name="Hardhat">
+<chain_id>31337</chain_id>
+<rpc_url>http://localhost:8545</rpc_url>
+<admin_account>0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266</admin_account>
+<private_key>0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80</private_key>
 </local_development>
 
-<icp_testnet>
-<replica_url>https://ic0.app</replica_url>
-<internet_identity>https://identity.ic0.app</internet_identity>
-<cycles>Requires cycles for deployment and operations</cycles>
-<note>Testnet environment for development and testing</note>
-</icp_testnet>
-
-<icp_mainnet>
-<replica_url>https://ic0.app</replica_url>
-<internet_identity>https://identity.ic0.app</internet_identity>
-<cycles>Production cycles required</cycles>
-<note>Production environment for live deployment</note>
-</icp_mainnet>
+<github_codespaces>
+<rpc_url>https://expert-couscous-4j6674wqj9jr2q7xx-8545.app.github.dev</rpc_url>
+<note>Frontend and backend URLs are dynamically generated based on Codespace</note>
+</github_codespaces>
 </network_environments>
 
 ## Common Development Patterns
 
 ### When Editing UI Components
 - Always maintain consistency between customer and admin dashboards
-- Use Internet Identity authentication consistently
+- Use the same unit conversion patterns across both interfaces
 - Ensure responsive design and proper error handling
-- Handle Principal IDs instead of Ethereum addresses
 
-### When Updating Canisters
-1. Make changes to canister source code (Rust/Motoko)
-2. Update Candid interfaces if needed
-3. Redeploy with `dfx deploy`
-4. Generate new frontend declarations with `dfx generate`
-5. Test on both dashboards
+### When Updating Smart Contracts
+1. Make changes to `/contracts/Paramify.sol`
+2. Update ABI in `/frontend/src/lib/contract.ts` if needed
+3. Redeploy and update addresses
+4. Test on both dashboards
 
-### When Modifying Canister Interfaces
-- Update Candid interface definitions
-- Regenerate frontend declarations
-- Update TypeScript types in frontend
-- Test canister calls from frontend
+### When Modifying Backend APIs
+- Update TypeScript interfaces in `/frontend/src/lib/usgsApi.ts`
+- Ensure error handling for blockchain connectivity issues
+- Test USGS API integration separately
 
 ## Testing Workflow
 
 <complete_system_test>
 <test_sequence>
-<step number="1">Start ICP replica: `dfx start --clean --background`</step>
-<step number="2">Deploy canisters: `dfx deploy`</step>
-<step number="3">Generate declarations: `dfx generate`</step>
-<step number="4">Start frontend: `cd frontend && npm run dev`</step>
-<step number="5">Test customer flow: Connect with Internet Identity, buy insurance, claim payout</step>
-<step number="6">Test admin flow: Update threshold, monitor system, manage policies</step>
+<step number="1">Deploy fresh contracts and update addresses</step>
+<step number="2">Start backend: `cd backend && npm start` (Linux/macOS) or `cd backend; npm start` (Windows)</step>
+<step number="3">Start frontend: `cd frontend && npm run dev` (Linux/macOS) or `cd frontend; npm run dev` (Windows)</step>
+<step number="4">Test customer flow: Buy insurance, wait for threshold trigger, claim payout</step>
+<step number="5">Test admin flow: Update threshold, fund contract, monitor system</step>
 </test_sequence>
 </complete_system_test>
-
-<canister_testing>
-<test_commands>
-- Test insurance canister: `dfx canister call insurance get_system_status`
-- Test oracle canister: `dfx canister call oracle get_latest_data`
-- Test payments canister: `dfx canister call payments get_balance`
-- Create policy: `dfx canister call insurance create_policy '(1000000000, 10000000000)'`
-- Set flood level: `dfx canister call oracle set_flood_level '(1600000000000)'`
-</test_commands>
-</canister_testing>
 
 <threshold_testing>
 <test_parameters>
 - Set threshold below current USGS level to trigger payout conditions
-- Test with various threshold values (common range: 3-15 feet)
+- Test with various threshold values (common range: 4-15 feet)
 - Verify immediate UI updates after threshold changes
-- Test HTTP outcalls to USGS API
 </test_parameters>
 </threshold_testing>
 
 ## Environment Management
 
 ### Required Services
-- **ICP Replica**: Must be running on port 4943
-- **Internet Identity**: Available at localhost:4943 (local) or ic0.app (mainnet)
-- **Frontend Dev Server**: Typically port 5173 (Vite)
+- **Hardhat Node**: Must be running on port 8545
+- **Backend Service**: Must be running on port 3001
+- **Frontend Dev Server**: Typically port 5173 (Vite) or 3000
 
 ### Service Dependencies
-- Frontend depends on canister declarations for type safety
-- Canisters communicate via ICP's native messaging
-- HTTP outcalls provide external API integration
+- Frontend depends on backend for USGS data
+- Backend depends on Hardhat node for blockchain interaction
 - All services can gracefully handle temporary disconnections
 
 ## Security Considerations
 
 ### Access Control
-- Principal-based authentication using Internet Identity
-- Role-based permissions (admin, oracle, user)
-- Canister-level access control for sensitive functions
+- Only contract owner can update flood threshold
+- Admin wallet verification in frontend
 - Input validation for all numeric inputs (thresholds, amounts)
 
 ### Error Handling
-- Always handle canister connectivity issues
-- Provide user-friendly error messages for ICP-specific errors
-- Implement retry logic for HTTP outcalls
+- Always handle blockchain connectivity issues
+- Provide user-friendly error messages
+- Implement transaction timeout handling
 - Graceful degradation when services are unavailable
-- Handle cycles exhaustion scenarios
 
 ## Common Issues & Solutions
 
 <troubleshooting_guide>
 <critical_issues>
 <issue priority="high" category="deployment">
-<title>DFX Replica Connection Failed</title>
-<problem>DFX fails to start or connect to replica</problem>
-<cause>Port conflicts, corrupted state, or previous instances still running</cause>
+<title>Port Already in Use Errors (EADDRINUSE)</title>
+<problem>Backend fails to start with `EADDRINUSE` error on port 3001</problem>
+<cause>Previous backend instance still running from earlier deployment attempt</cause>
 <symptoms>
-- Error: `Address already in use (os error 98)`
-- Error: `Connection refused (os error 111)`
-- DFX commands fail with connection errors
+- Error: `listen EADDRINUSE: address already in use :::3001`
+- Backend service won't start
+- Terminal shows port conflict error
 </symptoms>
 <solution_windows>
-<step number="1">Kill all DFX processes: `taskkill /F /IM dfx.exe`</step>
-<step number="2">Check port usage: `netstat -ano | findstr :4943`</step>
-<step number="3">Kill conflicting processes: `taskkill /PID <PID_NUMBER> /F`</step>
-<step number="4">Clear DFX state: `rm -rf ~/.local/share/dfx/network/local`</step>
-<step number="5">Restart DFX: `dfx start --clean --background`</step>
+<step number="1">Check port usage: `netstat -ano | findstr :3001`</step>
+<step number="2">Identify PID from output (rightmost column)</step>
+<step number="3">Kill the process: `taskkill /PID <PID_NUMBER> /F`</step>
+<step number="4">Restart backend: `cd backend; npm start`</step>
 </solution_windows>
 <solution_linux_macos>
-<step number="1">Kill all DFX processes: `pkill -f dfx`</step>
-<step number="2">Check port usage: `lsof -i :4943`</step>
-<step number="3">Kill conflicting processes: `kill -9 <PID_NUMBER>`</step>
-<step number="4">Clear DFX state: `rm -rf ~/.local/share/dfx/network/local`</step>
-<step number="5">Restart DFX: `dfx start --clean --background`</step>
+<step number="1">Check port usage: `lsof -i :3001`</step>
+<step number="2">Identify PID from output</step>
+<step number="3">Kill the process: `kill -9 <PID_NUMBER>`</step>
+<step number="4">Restart backend: `cd backend && npm start`</step>
 </solution_linux_macos>
-<prevention>Always use `dfx stop` before starting new instances. Use `--clean` flag when having issues.</prevention>
+<prevention>Always check for running services before starting new instances. Use background process management tools for development.</prevention>
 </issue>
 
 <issue priority="medium" category="deployment">
@@ -304,64 +260,53 @@ Canister IDs are automatically generated and stored in `.dfx/local/canister_ids.
 </issue>
 
 <issue priority="high" category="deployment">
-<title>Canister Deployment Fails</title>
-<problem>Canisters fail to deploy or show errors during deployment</problem>
-<cause>Insufficient cycles, build errors, or replica connectivity issues</cause>
-<symptoms>
-- Error: `Insufficient cycles`
-- Error: `Build failed`
-- Error: `Canister not found`
-- Deployment hangs or times out
-</symptoms>
+<title>Contract Address Mismatch After Deployment</title>
+<problem>Services fail to connect to contracts after fresh deployment due to outdated addresses</problem>
+<cause>Contract addresses change on every Hardhat deployment, but configurations aren't updated</cause>
 <solution>
-<step number="1">Check replica status: `dfx ping`</step>
-<step number="2">Check cycles balance: `dfx wallet balance`</step>
-<step number="3">Clear build cache: `rm -rf .dfx`</step>
-<step number="4">Rebuild canisters: `dfx build`</step>
-<step number="5">Deploy with cycles: `dfx deploy --with-cycles 1000000000000`</step>
+<step number="1">Always run `npx hardhat run scripts/deploy.js --network localhost` to get new addresses</step>
+<step number="2">Update `backend/.env` with new PARAMIFY_ADDRESS and MOCK_ORACLE_ADDRESS</step>
+<step number="3">Update `frontend/src/lib/contract.ts` with new contract addresses</step>
+<step number="4">Restart backend service after address updates</step>
 </solution>
-<prevention>Always check replica status and cycles balance before deployment. Use `--with-cycles` flag for large deployments.</prevention>
+<prevention>Make address updates the first step after any contract deployment</prevention>
 </issue>
 </critical_issues>
 
 <standard_issues>
 <issue category="connectivity">
-<title>"Canister not found" errors</title>
+<title>"Contract not found" errors</title>
 <solution>
-- Verify canisters are deployed: `dfx canister status --all`
-- Check canister IDs in frontend declarations
-- Regenerate declarations: `dfx generate`
-- Ensure replica is running: `dfx ping`
+- Verify contract addresses match deployed contracts
+- Restart backend service after address updates
+- Check Hardhat node is running and accessible
 </solution>
 </issue>
 
 <issue category="data">
 <title>USGS data not updating</title>
 <solution>
-- Check oracle canister logs: `dfx canister logs oracle`
-- Verify HTTP outcalls are working
-- Test oracle manually: `dfx canister call oracle get_latest_data`
-- Check USGS API connectivity
+- Check backend console for API errors
+- Verify backend service is running
+- Use manual update feature in admin dashboard
 </solution>
 </issue>
 
-<issue category="authentication">
-<title>Internet Identity connection issues</title>
+<issue category="wallet">
+<title>MetaMask connection issues</title>
 <solution>
-- Clear browser cache and cookies
-- Try different Internet Identity provider
-- Check if local replica is running on correct port
-- Verify Internet Identity canister is deployed
+- Ensure correct network (Chain ID 31337)
+- Check account has sufficient ETH for gas
+- Verify contract addresses in frontend config
 </solution>
 </issue>
 
 <issue category="admin">
-<title>Admin functions not working</title>
+<title>Threshold updates failing</title>
 <solution>
-- Confirm admin principal is set correctly
-- Check canister access control
-- Verify principal has admin role
-- Test admin functions via dfx commands
+- Confirm admin wallet is connected
+- Check backend service connectivity
+- Verify input validation (positive numbers, reasonable limits)
 </solution>
 </issue>
 
@@ -395,83 +340,64 @@ Canister IDs are automatically generated and stored in `.dfx/local/canister_ids.
 ## File Structure Reference
 
 ```
-/src/canisters/
-├── insurance/                # Insurance canister (Motoko)
-│   ├── main.mo              # Main insurance logic
-│   └── insurance.test.mo    # Unit tests
-├── oracle/                  # Oracle canister (Rust)
-│   ├── src/lib.rs          # Oracle implementation
-│   └── Cargo.toml          # Rust dependencies
-└── payments/                # Payments canister (Motoko)
-    ├── main.mo              # Payment processing
-    └── payments.test.mo     # Unit tests
+/contracts/
+├── Paramify.sol              # Main insurance contract
+├── mocks/
+│   └── MockV3Aggregator.sol  # Test oracle
 
-/icp-canister/               # Standalone insurance canister
-├── src/lib.rs              # Complete Rust implementation
-├── Cargo.toml              # Rust dependencies
-└── dfx.json                # Deployment configuration
+/backend/
+├── server.js                 # Main backend service
+└── .env                      # Contract addresses & config
 
 /frontend/src/
 ├── InsuracleDashboard.tsx         # Customer interface
 ├── InsuracleDashboardAdmin.tsx    # Admin interface
-├── declarations/                  # Generated canister interfaces
 └── lib/
-    └── agent.ts            # ICP agent configuration
+    ├── contract.ts           # Contract addresses & ABIs
+    └── usgsApi.ts           # Backend API client
 
-/interfaces/                 # Candid interface definitions
-├── insurance.did           # Insurance canister interface
-├── oracle.did              # Oracle canister interface
-└── payments.did            # Payments canister interface
+/scripts/
+├── deploy.js                 # Contract deployment
+└── deployMock.js            # Oracle deployment
 
 Documentation/
-├── docs/setup.md           # Setup instructions
-├── docs/frontend-integration.md  # Frontend migration guide
+├── THRESHOLD_DEPLOYMENT_GUIDE.md  # Deployment procedures
+├── USGS_INTEGRATION_GUIDE.md      # API integration guide
 └── AGENT_SYSTEMS_INSTRUCTIONS.md  # This file
 ```
 
-## Key Canister Methods
+## Key API Endpoints
 
-### Insurance Canister
-- `get_system_status()` - Complete system status
-- `create_policy(coverage_amount, premium_amount)` - Create new policy
-- `get_policy(principal)` - Get user's policy
-- `claim_payout()` - Claim payout if eligible
-- `check_payout_eligibility(principal)` - Check if user can claim
-- `get_all_policies()` - Get all policies (admin only)
-- `update_threshold(threshold)` - Update flood threshold (admin only)
+### Backend APIs
+- `GET /api/health` - Service health check
+- `GET /api/status` - Complete system status
+- `GET /api/threshold` - Current threshold data
+- `POST /api/threshold` - Update threshold (admin only)
+- `GET /api/flood-data` - USGS flood data
+- `POST /api/manual-update` - Force USGS data refresh
 
-### Oracle Canister
-- `get_latest_data()` - Get current flood data
-- `set_flood_level(level)` - Set flood level (oracle only)
-- `get_threshold()` - Get current threshold
-- `update_from_usgs()` - Fetch data from USGS API
-
-### Payments Canister
-- `get_balance(principal)` - Get user's token balance
-- `transfer(from, to, amount)` - Transfer tokens
-- `get_total_supply()` - Get total token supply
+### External APIs
+- **USGS**: https://waterservices.usgs.gov/nwis/iv/ (Site: 01646500, Parameter: 00065)
 
 ## Development Best Practices
 
 ### When Making Changes
 1. Always test on both customer and admin dashboards
-2. Verify canister calls work correctly
+2. Verify unit conversions are consistent
 3. Update relevant documentation
 4. Test with both connected and disconnected states
-5. Ensure graceful error handling for ICP-specific errors
+5. Ensure graceful error handling
 
 ### Code Consistency
-- Use consistent Principal ID handling
+- Use the same scaling factor (100,000,000,000) everywhere
 - Maintain consistent error message formatting
-- Follow the established TypeScript patterns for ICP
+- Follow the established TypeScript patterns
 - Keep UI components visually consistent
-- Use proper BigInt handling for token amounts
 
 ### Git Workflow
-- Commit canister changes separately from frontend changes
+- Commit contract address updates separately from feature changes
 - Include deployment instructions in commit messages
 - Update relevant documentation files with each change
-- Test canister deployments before committing
 
 ---
 
@@ -479,47 +405,38 @@ Documentation/
 
 ### Windows (PowerShell)
 ```powershell
-# Enter WSL environment
-wsl
+# Start Hardhat node
+npx hardhat node
 
-# Start ICP replica
-dfx start --clean --background
+# Deploy contracts
+npx hardhat run scripts/deploy.js --network localhost
 
-# Deploy canisters
-dfx deploy
-
-# Generate frontend declarations
-dfx generate
+# Start backend
+cd backend; npm start
 
 # Start frontend
 cd frontend; npm run dev
 
-# Check canister status
-dfx canister status --all
-
-# Test canister calls
-dfx canister call insurance get_system_status
+# Check contract balances
+npx hardhat run scripts/check-balance.js --network localhost
 ```
 
 ### Linux/macOS (Bash)
 ```bash
-# Start ICP replica
-dfx start --clean --background
+# Start Hardhat node
+npx hardhat node
 
-# Deploy canisters
-dfx deploy
+# Deploy contracts
+npx hardhat run scripts/deploy.js --network localhost
 
-# Generate frontend declarations
-dfx generate
+# Start backend
+cd backend && npm start
 
 # Start frontend
 cd frontend && npm run dev
 
-# Check canister status
-dfx canister status --all
-
-# Test canister calls
-dfx canister call insurance get_system_status
+# Check contract balances
+npx hardhat run scripts/check-balance.js --network localhost
 ```
 
 ---
@@ -528,32 +445,27 @@ dfx canister call insurance get_system_status
 
 <agent_instructions>
 <critical_requirements>
-⚠️ IMPORTANT: Any AI agent working on this ICP codebase MUST update this file when they discover:
+⚠️ IMPORTANT: Any AI agent working on this codebase MUST update this file when they discover:
 
 <mandatory_updates>
-1. New ICP-specific bugs or issues not covered in the troubleshooting section
-2. Better canister development patterns or more efficient workflows  
-3. Missing critical ICP information that would help future agents
-4. Changes to the canister architecture or new features added
-5. Updated ICP dependencies or environment requirements
-6. New testing procedures or deployment steps for ICP
-7. Security considerations specific to ICP not previously documented
-8. Internet Identity or authentication issues
-9. Canister upgrade procedures or stable memory management
-10. HTTP outcalls or external API integration patterns
+1. New bugs or issues not covered in the troubleshooting section
+2. Better development patterns or more efficient workflows  
+3. Missing critical information that would help future agents
+4. Changes to the architecture or new features added
+5. Updated dependencies or environment requirements
+6. New testing procedures or deployment steps
+7. Security considerations not previously documented
 </mandatory_updates>
 </critical_requirements>
 
 <documentation_workflow>
 <section_mapping>
 When you discover something new, add it to the appropriate section:
-- ICP Bugs/Issues → Add to "Common Issues & Solutions"
-- New canister workflows → Add to "Development Best Practices" or "Testing Workflow"
+- Bugs/Issues → Add to "Common Issues & Solutions"
+- New workflows → Add to "Development Best Practices" or "Testing Workflow"
 - Architecture changes → Update "Project Architecture" section
-- New canister methods → Update "Key Canister Methods"
+- New APIs/endpoints → Update "Key API Endpoints"
 - Environment changes → Update "Environment Management" or "Network Configuration"
-- Authentication issues → Add to "User Roles & Authentication"
-- Canister deployment issues → Add to "Critical Canister ID Management"
 </section_mapping>
 
 <standards>

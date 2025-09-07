@@ -1,295 +1,42 @@
-/* Clean, modern styling for ICP Frontend */
-.App {
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
   text-align: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
-.App-header {
-  padding: 2rem;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.header-left h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 2.5rem;
-  font-weight: 700;
-}
-
-.header-left p {
-  margin: 0;
-  font-size: 1.2rem;
-  opacity: 0.9;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-}
-
-.auth-section {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.user-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-}
-
-.user-principal {
-  font-size: 0.9rem;
-  opacity: 0.8;
-  font-family: monospace;
-}
-
-.admin-badge {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.App-main {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-}
-
-.status-card,
-.flood-card,
-.info-card,
-.actions-card,
-.policy-card,
-.error-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
-  padding: 1.5rem;
-  text-align: left;
-}
-
-.error-card {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #fca5a5;
-}
-
-.policy-card {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.3);
-}
-
-.status-card h2,
-.flood-card h2,
-.info-card h2,
-.actions-card h2,
-.policy-card h2,
-.error-card h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.policy-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.policy-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.75rem;
-}
-
-.stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-.policy-actions {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.status-connected {
-  color: #4ade80;
-  font-weight: 600;
-}
-
-.status-disconnected {
-  color: #f87171;
-  font-weight: 600;
-}
-
-.flood-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.flood-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-.flood-alert {
-  color: #f87171;
-  font-weight: 600;
-}
-
-.flood-normal {
-  color: #4ade80;
-  font-weight: 600;
-}
-
-.info-grid {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-.action-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
-
-.btn:active {
-  transform: translateY(0);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-login {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-
-.btn-logout {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-}
-
-.btn-small {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-}
-
-.App-footer {
-  padding: 2rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.App-footer p {
-  margin: 0.5rem 0;
-  opacity: 0.8;
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-  .App-main {
-    grid-template-columns: 1fr;
-    padding: 1rem;
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
   }
-  
-  .header-content {
-    flex-direction: column;
-    gap: 1rem;
-    text-align: center;
+  to {
+    transform: rotate(360deg);
   }
-  
-  .header-left h1 {
-    font-size: 2rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
   }
-  
-  .auth-section {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .user-info {
-    align-items: center;
-  }
-  
-  .flood-item,
-  .info-item,
-  .stat-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-  }
-  
-  .policy-stats {
-    grid-template-columns: 1fr;
-  }
-  
-  .policy-actions {
-    flex-direction: column;
-  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
 }

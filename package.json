@@ -25,7 +25,7 @@
     "stop": "dfx stop",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "npm run test:motoko && npm run test:rust",
-    "test:motoko": "echo 'Motoko tests skipped - vessel not available'",
+    "test:motoko": "$(vessel bin)/moc -r $(vessel sources) -wasi-system-api src/canisters/**/*.test.mo",
     "test:rust": "cargo test --all",
     "test:integration": "npm run test:integration --workspace=scripts",
     "test:e2e": "npm run test:e2e --workspace=frontend",
@@ -46,7 +46,7 @@
     "dev:frontend": "npm run dev --workspace=frontend",
     "verify": "./scripts/verify-dev-env.sh",
     "format": "npm run format:motoko && npm run format:rust && npm run format:js",
-    "format:motoko": "echo 'Motoko formatting skipped - mo-fmt not available'",
+    "format:motoko": "mo-fmt src/canisters/**/*.mo",
     "format:rust": "cargo fmt --all",
     "format:js": "prettier --write \"frontend/**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "lint": "npm run lint:rust && npm run lint:js",
@@ -54,7 +54,7 @@
     "lint:js": "npm run lint --workspace=frontend",
     "precommit": "npm run format && npm run lint && npm run test:unit",
     "docs": "npm run docs:generate && npm run docs:serve",
-    "docs:generate": "cargo doc --no-deps",
+    "docs:generate": "mo-doc src/canisters/**/*.mo && cargo doc --no-deps",
     "docs:serve": "python3 -m http.server 8080 --directory docs/api"
   },
   "engines": {
@@ -63,22 +63,23 @@
   },
   "devDependencies": {
     "@dfinity/agent": "^1.1.0",
-    "@dfinity/auth-client": "^1.1.0",
+    "@dfinity/principal": "^1.1.0",
     "@dfinity/candid": "^1.1.0",
     "@dfinity/identity": "^1.1.0",
-    "@dfinity/principal": "^1.1.0",
-    "hardhat": "^3.0.4",
+    "@dfinity/auth-client": "^1.1.0",
+    "prettier": "^3.2.4",
     "husky": "^9.0.10",
     "lint-staged": "^15.2.1",
-    "prettier": "^3.2.4"
+    "vessel": "^0.7.0",
+    "mo-fmt": "^0.2.0",
+    "mo-doc": "^0.2.0"
   },
   "dependencies": {
-    "chalk": "^5.3.0",
-    "commander": "^12.0.0",
     "dotenv": "^16.4.1",
-    "ethers": "^6.15.0",
-    "inquirer": "^9.2.14",
-    "ora": "^8.0.1"
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1",
+    "inquirer": "^9.2.14"
   },
   "repository": {
     "type": "git",
@@ -102,8 +103,7 @@
   "homepage": "https://github.com/danielabrahamx/Paramify#readme",
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,css,md}": "prettier --write",
-    "*.mo": "echo 'Motoko formatting skipped'",
+    "*.mo": "mo-fmt",
     "*.rs": "cargo fmt --"
-  },
-  "type": "module"
+  }
 }

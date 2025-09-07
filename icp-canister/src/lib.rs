@@ -8,16 +8,6 @@ use std::collections::BTreeMap;
 type PolicyId = u64;
 type Timestamp = u64;
 
-// Constants for flood monitoring
-// Using native floating-point numbers - much cleaner and more readable!
-const DEFAULT_FLOOD_THRESHOLD_FEET: f64 = 12.0; // 12 feet default threshold
-const MAX_FLOOD_THRESHOLD_FEET: f64 = 100.0; // Maximum reasonable threshold
-
-// Helper function to format flood levels for logging
-fn format_flood_level(level: f64) -> String {
-    format!("{:.2} ft", level)
-}
-
 // Policy data structure
 #[derive(CandidType, Deserialize, Clone)]
 struct Policy {
@@ -36,8 +26,8 @@ struct State {
     policies: BTreeMap<PolicyId, Policy>,
     policy_id_counter: PolicyId,
     policyholder_map: BTreeMap<Principal, PolicyId>,
-    flood_level: f64, // Current flood level in feet
-    flood_threshold: f64, // Threshold for payouts in feet
+    flood_level: i64, // Current flood level in scaled units
+    flood_threshold: u64, // Threshold for payouts (default 12 feet = 1200000000000)
     admin: Principal,
     oracle_updaters: Vec<Principal>,
     // Mirror storage for admin dashboard (Ethereum-facing data)
@@ -50,8 +40,8 @@ thread_local! {
         policies: BTreeMap::new(),
         policy_id_counter: 0,
         policyholder_map: BTreeMap::new(),
-        flood_level: 0.0,
-        flood_threshold: DEFAULT_FLOOD_THRESHOLD_FEET, // 12 feet default
+        flood_level: 0,
+        flood_threshold: 1200000000000, // 12 feet default
         admin: Principal::anonymous(),
         oracle_updaters: Vec::new(),
         mirror_policies: BTreeMap::new(),
@@ -385,7 +375,7 @@ fn get_policy_stats() -> (u64, u64, u64) {
 
 // Set flood level (oracle function)
 #[update]
-fn set_flood_level(flood_level: f64) -> Result<(), String> {
+fn set_flood_level(flood_level: i64) -> Result<(), String> {
     let caller = ic_cdk::caller();
     
     STATE.with(|state| {
@@ -396,29 +386,20 @@ fn set_flood_level(flood_level: f64) -> Result<(), String> {
             return Err("Unauthorized: Oracle updater access required".to_string());
         }
         
-        let old_level = state.flood_level;
         state.flood_level = flood_level;
-        
-        // Log the flood level change with human-readable format
-        ic_cdk::println!(
-            "🌊 Flood level updated: {} -> {}",
-            format_flood_level(old_level),
-            format_flood_level(flood_level)
-        );
-        
         Ok(())
     })
 }
 
 // Get current flood level
 #[query]
-fn get_flood_level() -> f64 {
+fn get_flood_level() -> i64 {
     STATE.with(|state| state.borrow().flood_level)
 }
 
 // Set flood threshold (admin only)
 #[update]
-fn set_flood_threshold(threshold: f64) -> Result<(), String> {
+fn set_flood_threshold(threshold: u64) -> Result<(), String> {
     let caller = ic_cdk::caller();
     
     STATE.with(|state| {
@@ -430,32 +411,22 @@ fn set_flood_threshold(threshold: f64) -> Result<(), String> {
         }
         
         // Validate threshold
-        if threshold <= 0.0 {
+        if threshold == 0 {
             return Err("Threshold must be positive".to_string());
         }
         
-        if threshold > MAX_FLOOD_THRESHOLD_FEET {
-            return Err(format!("Threshold too high: {:.2} ft (max {:.2} ft)", 
-                threshold, MAX_FLOOD_THRESHOLD_FEET));
+        if threshold > 10000000000000 { // Max 100 feet
+            return Err("Threshold too high".to_string());
         }
         
-        let old_threshold = state.flood_threshold;
         state.flood_threshold = threshold;
-        
-        // Log the threshold change with human-readable format
-        ic_cdk::println!(
-            "🚨 Flood threshold updated: {} -> {}",
-            format_flood_level(old_threshold),
-            format_flood_level(threshold)
-        );
-        
         Ok(())
     })
 }
 
 // Get current flood threshold
 #[query]
-fn get_flood_threshold() -> f64 {
+fn get_flood_threshold() -> u64 {
     STATE.with(|state| state.borrow().flood_threshold)
 }
 

@@ -1,47 +1,66 @@
 {
   "version": 1,
-  "dfx": "0.16.1",
+  "dfx": "0.29.0",
   "canisters": {
-    "insurance": {
-      "type": "motoko",
-      "main": "src/canisters/insurance/main.mo",
+    "paramify_insurance": {
+      "type": "rust",
+      "package": "paramify_insurance",
+      "candid": "icp-canister/src/paramify_insurance.did",
       "declarations": {
-        "output": "src/declarations/insurance",
-        "bindings": ["js", "ts", "did"],
+        "output": "frontend/src/declarations/paramify_insurance",
+        "bindings": [
+          "js",
+          "ts",
+          "did"
+        ],
         "node_compatibility": true
-      }
+      },
+      "metadata": [
+        {
+          "name": "candid:service",
+          "path": "icp-canister/src/paramify_insurance.did"
+        }
+      ]
     },
     "oracle": {
       "type": "rust",
       "package": "oracle",
       "candid": "src/canisters/oracle/oracle.did",
       "declarations": {
-        "output": "src/declarations/oracle",
-        "bindings": ["js", "ts", "did"],
+        "output": "frontend/src/declarations/oracle",
+        "bindings": [
+          "js",
+          "ts",
+          "did"
+        ],
         "node_compatibility": true
       }
     },
-    "payments": {
+    "flood_data_storage": {
       "type": "motoko",
-      "main": "src/canisters/payments/main.mo",
+      "main": "icp-integration/src/flood_data_storage/main.mo",
       "declarations": {
-        "output": "src/declarations/payments",
-        "bindings": ["js", "ts", "did"],
+        "output": "frontend/src/declarations/flood_data_storage",
+        "bindings": [
+          "js",
+          "ts",
+          "did"
+        ],
         "node_compatibility": true
       }
-    },
-    "icrc1_ledger": {
-      "type": "custom",
-      "candid": "https://raw.githubusercontent.com/dfinity/ic/master/rs/rosetta-api/icrc1/ledger/ledger.did",
-      "wasm": "https://download.dfinity.systems/ic/release-2024-01-25_23-01/canisters/ic-icrc1-ledger.wasm.gz",
-      "init_arg": "(variant { Init = record { token_symbol = \"ckETH\"; token_name = \"Chain Key Ethereum\"; minting_account = record { owner = principal \"${MINTING_PRINCIPAL}\" }; transfer_fee = 10_000; metadata = vec {}; initial_balances = vec { record { record { owner = principal \"${DEPLOYER_PRINCIPAL}\"; }; 1_000_000_000_000; }; }; archive_options = record { num_blocks_to_archive = 10_000; trigger_threshold = 20_000; controller_id = principal \"${DEPLOYER_PRINCIPAL}\"; }; feature_flags = opt record { icrc2 = true; }; decimals = opt 8; }})"
     },
     "frontend": {
       "type": "assets",
-      "source": ["frontend/dist"],
+      "source": [
+        "frontend/dist"
+      ],
       "declarations": {
-        "output": "src/declarations/frontend",
-        "bindings": ["js", "ts", "did"],
+        "output": "frontend/src/declarations/frontend",
+        "bindings": [
+          "js",
+          "ts",
+          "did"
+        ],
         "node_compatibility": true
       }
     }
@@ -62,7 +81,9 @@
       }
     },
     "ic": {
-      "providers": ["https://ic0.app"],
+      "providers": [
+        "https://ic0.app"
+      ],
       "type": "persistent"
     }
   }

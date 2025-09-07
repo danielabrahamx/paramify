@@ -1,322 +1,323 @@
-# Paramify: Internet Computer Flood Insurance Platform
+# Paramify: Decentralized Flood Insurance Proof of Concept
 
-![Paramify Logo](image.png)
+![alt text](image.png)
 
-## 🌊 Overview
 
-**Paramify** is a decentralized flood insurance platform successfully migrated from Ethereum to the Internet Computer Protocol (ICP). The system provides automated insurance purchases and payouts triggered by real-time flood level data from USGS APIs. Users can purchase flood insurance policies and claim payouts when flood levels exceed predefined thresholds.
+## Overview
 
-**🎉 Migration Status: 95% Complete - Production Ready!**
+**Paramify** is a proof of concept (PoC) for a decentralized flood insurance platform, demonstrating automated insurance purchases and payouts triggered by flood level data from a compatible oracle. This PoC showcases a smart contract (`Paramify.sol`) that allows users to buy flood insurance policies and claim payouts when flood levels exceed a predefined threshold, with role-based access control for secure administration.
 
-### ✅ Successfully Implemented Features
-- **Real-time USGS Integration**: Backend fetches flood levels every 5 minutes (currently 2.74 ft)
-- **ICP Canister Deployment**: Fully functional paramify_insurance canister deployed
-- **Backend-to-Canister Communication**: Successful ICP agent integration
-- **Internet Identity Authentication**: Complete authentication system implemented
-- **Flood Threshold Monitoring**: Configurable 12-foot threshold with admin controls
-- **Policy Management**: Create, track, and manage insurance policies
-- **Automated Payouts**: Trigger payouts when flood conditions are met
-
-### 🚀 Current Working System
-The platform demonstrates ICP's unique capabilities: stable memory persistence, low-cost transactions, direct HTTP outcalls to external APIs, and seamless user experience without gas fees.
+Paramify highlights the potential for decentralized insurance applications. The architecture is adaptable to Avalanche C-Chain or other EVM-compatible networks. This README provides instructions to set up, deploy, and demo the PoC locally, along with steps to test key features.
 
 ### Features
-- **Insurance Purchase**: Users buy policies by paying a premium (10% of coverage) using ICP tokens
-- **Automated Payouts**: Payouts are triggered when flood levels exceed 3 feet, automatically transferring coverage to policyholders
-- **Real-Time Flood Data**: ICP canisters fetch live USGS water level data via HTTP outcalls and update automatically
-- **Role-Based Access**: Admins manage the system, oracle updaters set flood levels, and users manage their policies
-- **Internet Identity**: Seamless authentication using Internet Identity or Plug wallet
-- **Stable Memory**: Persistent data storage that survives canister upgrades
-- **Low-Cost Operations**: No gas fees - operations are powered by cycles
+- **Insurance Purchase**: Users buy policies by paying a premium (10% of coverage), e.g., 0.1 ETH for 1 ETH coverage.
+- **Automated Payouts**: Payouts are triggered when the flood level exceeds 3 feet, sending coverage (e.g., 1 ETH) to the policyholder.
+- **Real-Time Flood Data**: Backend server fetches live USGS water level data every 5 minutes and updates the blockchain oracle.
+- **Role-Based Access**: Admins manage the contract, oracle updaters set flood levels, and insurance admins configure parameters.
+- **Frontend Interface**: A React-based UI allows users to connect wallets, buy insurance, view flood levels, and trigger payouts.
+- **Backend API**: Node.js server provides real-time flood data integration with automatic oracle updates.
 
 
 
 ## Prerequisites
 
-- **Node.js**: Version 18.x or higher
-- **Rust**: Version 1.75.0 or higher
-- **dfx**: DFINITY SDK (version 0.16.1 or higher)
-- **Git**: To clone the repository
-- **Internet Identity**: For user authentication (or Plug wallet)
-- **WSL2** (Windows users): For running dfx commands
+- **Node.js**: Version 18.x or 23.x (tested with 23.9.0).
+- **MetaMask**: Browser extension for wallet interactions.
+- **Git**: To clone the repository.
+- **Hardhat**: For contract deployment and testing.
+- **Python 3** (optional): For alternative frontend serving if `http-server` is unavailable.
 
 
-## 🚀 Quick Start (Current Working System)
+## Quick Start: Choose Your Environment
 
-### Windows Users (WSL Required)
-```powershell
-# 1. Enter WSL environment
-wsl
+This project can be run in either **GitHub Codespaces** (cloud) or on your **local machine**. Follow the instructions for your preferred environment below.
 
-# 2. Navigate to project directory
-cd ~/Paramify-5
+---
 
-# 3. Start ICP replica
-dfx start --clean --background
+## Quick Deployment Summary
 
-# 4. Deploy the insurance canister
-dfx deploy paramify_insurance
+For a complete local deployment, run these commands in order:
 
-# 5. Start backend server (in new terminal)
+```bash
+# Terminal 1: Start Hardhat node
+npx hardhat node
+
+# Terminal 2: Deploy contracts and fund
+npx hardhat run scripts/deploy.js --network localhost
+npx hardhat run scripts/fund-contract.js --network localhost
+
+# Terminal 3: Start backend server (real-time flood data)
 cd backend
-node simple-server.js
+npm start
 
-# 6. Test system connectivity
-node test-canister-final.js
+# Terminal 4: Start frontend
+cd frontend  
+npm run dev
 ```
 
-### Current System Access
-- **Backend API**: http://localhost:3001
-  - Health check: `/api/health`
-  - Real-time flood data: `/api/flood-data`
-  - USGS test endpoint: `/api/test-usgs`
-- **Canister ID**: `bkyz2-fmaaa-aaaaa-qaaaq-cai`
-- **Local Replica**: http://127.0.0.1:4943
-- **Frontend**: Ready for deployment (dependencies migrated)
+Then configure MetaMask with the Hardhat network and import test accounts. The system will show real-time flood level updates in the backend terminal every 5 minutes.
 
-### System Status Dashboard
-```
-🌊 Current Flood Level: 2.74 feet (USGS real-time)
-🚨 Flood Threshold: 12.0 feet (configurable)
-📊 Policy Stats: 0 total, 0 active, 0 paid out
-✅ Backend Status: Fetching USGS data every 5 minutes
-✅ Canister Status: Deployed and responding
-✅ Network Status: Local replica running
-```
+---
 
-## Detailed Setup Instructions
+## A. GitHub Codespaces Deployment
 
-### 1. Install Prerequisites
-
-#### Install DFX (DFINITY SDK)
+### 1. Clone and Install
 ```bash
-# Install DFX
-sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
-
-# Add to PATH (add to ~/.bashrc or ~/.zshrc)
-export PATH=$HOME/bin:$PATH
-
-# Verify installation
-dfx --version
-```
-
-#### Install Rust (if not already installed)
-```bash
-# Install Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source $HOME/.cargo/env
-
-# Add WASM target for ICP
-rustup target add wasm32-unknown-unknown
-```
-
-### 2. Clone and Setup Project
-```bash
-git clone https://github.com/danielabrahamx/Paramify.git
-cd Paramify
-git checkout icp-migration
-
-# Install dependencies
+git clone https://github.com/your-username/paramify.git
+cd paramify
 npm install
-cd frontend && npm install && cd ..
+npm install -g http-server
 ```
 
-### 3. Start Local ICP Replica
+### 2. Start the Hardhat Node
 ```bash
-# Start ICP replica in background
-dfx start --clean --background
-
-# Verify replica is running
-dfx ping
+npx hardhat node
 ```
+- This starts a node at `http://127.0.0.1:8545` (Chain ID 31337) and prints test accounts and private keys.
 
-### 4. Deploy Canisters
+### 3. Deploy Contracts
 ```bash
-# Deploy all canisters
-dfx deploy
+npx hardhat run scripts/deploy.js --network localhost
+```
+- Note the deployed `Paramify` contract address. Update `frontend/index.html` with this address in `PARAMIFY_ADDRESS`.
 
-# Check deployment status
-dfx canister status --all
+### 4. Fund the Contract
+```bash
+npx hardhat run scripts/fund-contract.js --network localhost
+```
+- This sends 2 ETH to the contract for payouts.
+
+### 5. Start the Backend Server
+```bash
+cd backend
+npm start
+```
+- This starts the backend server on port 3001 with real-time USGS flood data updates.
+- The server fetches flood levels every 5 minutes and updates the blockchain oracle.
+- You'll see live flood level updates in the terminal (e.g., "Latest water level: 4.11 ft").
+
+### 6. Serve the Frontend
+```bash
+cd frontend
+http-server -p 8080
+```
+- If `http-server` is unavailable, use:
+  ```bash
+  python3 -m http.server 8080
+  ```
+- In the Codespaces "Ports" tab, make port 8080 public. Open the resulting URL (e.g., `https://<random-id>-8080.app.github.dev`) in your browser.
+
+### 6. Configure MetaMask
+- In the Codespaces "Ports" tab, make port 8545 public. Use the public URL (e.g., `https://<random-id>-8545.app.github.dev`) as the RPC URL in MetaMask.
+- In MetaMask, add a new network:
+  - Network Name: Hardhat (Codespace)
+  - New RPC URL: (your public 8545 URL)
+  - Chain ID: 31337
+  - Currency Symbol: ETH
+- Import test accounts using private keys from the Hardhat node output (see terminal logs).
+- Update `frontend/src/lib/contract.ts` with the correct contract addresses if you redeploy contracts.
+
+---
+
+## B. Local Machine Deployment
+
+### 1. Clone and Install
+```bash
+git clone https://github.com/your-username/paramify.git
+cd paramify
+npm install
+npm install -g http-server
 ```
 
-### 5. Start Frontend
+### 2. Start the Hardhat Node
+```bash
+npx hardhat node
+```
+- This starts a node at `http://127.0.0.1:8545` (Chain ID 31337) and prints test accounts and private keys.
+
+### 3. Deploy Contracts
+```bash
+npx hardhat run scripts/deploy.js --network localhost
+```
+- Note the deployed `Paramify` contract address. Update `frontend/index.html` with this address in `PARAMIFY_ADDRESS`.
+
+### 4. Fund the Contract
+```bash
+npx hardhat run scripts/fund-contract.js --network localhost
+```
+- This sends 2 ETH to the contract for payouts.
+
+### 5. Start the Backend Server
+```bash
+cd backend
+npm start
+```
+- This starts the backend server on port 3001 with real-time USGS flood data updates.
+- The server fetches flood levels every 5 minutes and updates the blockchain oracle.
+- You'll see live flood level updates in the terminal (e.g., "Latest water level: 4.11 ft").
+
+### 6. Serve the Frontend
 ```bash
 cd frontend
 npm run dev
 ```
+- This starts the Vite development server on port 8080.
+- Open [http://localhost:8080](http://localhost:8080) in your browser.
 
-The application will be available at `http://localhost:5173` with Internet Identity authentication.
+### 6. Configure MetaMask
+- In MetaMask, add a new network:
+  - Network Name: Hardhat (Local)
+  - New RPC URL: `http://127.0.0.1:8545`
+  - Chain ID: 31337
+  - Currency Symbol: ETH
+- Import test accounts using private keys from the Hardhat node output (see terminal logs).
+- Update `frontend/src/lib/contract.ts` and `backend/.env` with the correct contract addresses if you redeploy contracts.
 
-## 🏗️ System Architecture (Current Implementation)
+---
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   USGS API      │───▶│  Backend Server  │───▶│  ICP Canister   │
-│ (Real-time data)│    │ (Node.js + ICP)  │    │ (Rust/Motoko)   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │                        │
-                                ▼                        ▼
-                       ┌──────────────────┐    ┌─────────────────┐
-                       │   Frontend       │───▶│ Internet        │
-                       │ (React + Vite)   │    │ Identity        │
-                       └──────────────────┘    └─────────────────┘
-```
+**Note:** For both environments, always update the contract addresses in `frontend/src/lib/contract.ts` and `backend/.env` after redeployment. The backend server provides real-time flood data updates that you can monitor in the terminal output.
 
-### Current Working Components:
-- ✅ **Insurance Canister** (Rust): Deployed and responding to queries
-- ✅ **Backend Server** (Node.js): USGS integration with ICP agent connectivity
-- ✅ **Real-time Data**: USGS flood monitoring every 5 minutes
-- ✅ **ICP Agent Integration**: Successful backend-to-canister communication
-- ✅ **Internet Identity**: Authentication system implemented
-- 🔄 **Frontend**: Dependencies migrated, ready for optimization
-- ✅ **Stable Memory**: Persistent storage across canister upgrades
+## Live Flood Data Monitoring
 
-### Technical Stack:
-- **Backend**: Node.js with @dfinity/agent, axios for USGS API
-- **Canister**: Rust with ic-cdk, Candid interfaces
-- **Frontend**: React, TypeScript, @dfinity libraries
-- **Authentication**: Internet Identity integration
-- **Data**: USGS real-time API (Potomac River monitoring)
+The Paramify system now includes real-time flood level monitoring:
+
+- **Backend Terminal**: Shows timestamped flood level updates every 5 minutes (e.g., "Latest water level: 4.11 ft at 2025-06-25T04:45:00.000-04:00")
+- **Frontend Dashboard**: Displays current flood levels in feet with automatic updates
+- **API Endpoint**: Access flood data at `http://localhost:3001/api/flood-data`
+- **Blockchain Oracle**: Automatically updated with scaled flood values for smart contract integration
 
 ## Demo Instructions
 
-### 1. Connect with Internet Identity
-- Open the application at `http://localhost:5173`
-- Click "Connect with Internet Identity"
-- Authenticate using your Internet Identity or create a new one
-- Verify: Your principal ID is displayed in the top right
+### 1. Buy Insurance
+- Connect MetaMask as the customer (`0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199`).
+- In the UI, enter `1` in “Coverage amount (ETH)” (premium: 0.1 ETH).
+- Click “Buy Insurance” and confirm in MetaMask.
+- Verify: Premium: 0.1 ETH, Coverage: 1 ETH, Status: Active.
 
-### 2. Purchase Insurance Policy
-- Enter coverage amount (e.g., 100 tokens)
-- Click "Purchase Insurance"
-- Confirm the transaction
-- Verify: Policy is created with 10% premium (10 tokens)
+### 2. Set Flood Level
+- Connect as the deployer (`0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`).
+- Enter `3001` in “New flood level” (threshold: 3000).
+- Click “Update Flood Level” and confirm.
+- Verify: Flood level is 3001.0 units.
 
-### 3. Monitor Flood Data
-- View real-time flood level from USGS API
-- Check current threshold (default: 3.0 feet)
-- See automatic updates every 5 minutes
+### 3. Trigger Payout
+- Connect as the customer.
+- Click “Trigger Payout” and confirm.
+- Verify:
+  - Status: Paid Out.
+  - Customer balance increases by 1 ETH (check “Your Balance” or MetaMask).
+  - Contract balance decreases to ~1.1 ETH.
 
-### 4. Trigger Payout (Admin)
-- Connect as admin user
-- Update flood level above threshold (e.g., 4.0 feet)
-- User can now claim payout
-- Verify: Policy status changes to "Paid Out"
-
-### 5. System Administration
-- View all policies and statistics
-- Update flood thresholds
-- Monitor system health
-- Manage oracle data sources
+### 4. Edge Cases
+- **Low Flood Level**: Set flood level to 2000 and try payout (fails: “Flood level below threshold”).
+- **Low Contract Balance**: Deploy a new contract without funding and try payout (fails: “Payout failed”).
+- **Duplicate Policy**: Try buying another policy while one is active (fails: “Policy already active”).
 
 ## Testing
 
-### Run Canister Tests
+Run unit tests to verify contract functionality:
 ```bash
-# Test insurance canister
-dfx canister call insurance get_system_status
-
-# Test oracle canister
-dfx canister call oracle get_latest_data
-
-# Test payments canister
-dfx canister call payments get_balance
+npx hardhat test
 ```
+- Tests cover:
+  - Policy creation and validation.
+  - Payout triggering above/below threshold.
+  - Role-based access control.
+  - Contract funding and withdrawal.
 
-### Integration Tests
+To verify the current state:
 ```bash
-# Run frontend tests
-cd frontend
-npm test
-
-# Run E2E tests
-npm run test:e2e
+npx hardhat run scripts/check-policy.js --network localhost
 ```
+- Example script (`scripts/check-policy.js`):
+  ```javascript
+  const { ethers } = require("hardhat");
 
-### Manual Testing Commands
-```bash
-# Create a policy
-dfx canister call insurance create_policy '(1000000000, 10000000000)'
+  async function main() {
+    const customer = "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199";
+    const contract = await ethers.getContractAt("Paramify", "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512");
+    const policy = await contract.policies(customer);
+    console.log("Policy:", {
+      active: policy.active,
+      premium: ethers.formatEther(policy.premium),
+      coverage: ethers.formatEther(policy.coverage),
+      paidOut: policy.paidOut,
+    });
+    const balance = await contract.getContractBalance();
+    console.log("Contract Balance:", ethers.formatEther(balance), "ETH");
+    const customerBalance = await ethers.provider.getBalance(customer);
+    console.log("Customer Balance:", ethers.formatEther(customerBalance), "ETH");
+  }
 
-# Set flood level above threshold
-dfx canister call oracle set_flood_level '(1600000000000)'
-
-# Trigger payout
-dfx canister call insurance trigger_payout
-
-# Check system status
-dfx canister call insurance get_system_status
-```
+  main().catch(console.error);
+  ```
 
 ## Project Structure
 
 ```
 paramify/
-├── src/
-│   ├── canisters/
-│   │   ├── insurance/        # Insurance canister (Motoko)
-│   │   ├── oracle/           # Oracle canister (Rust)
-│   │   └── payments/         # Payments canister (Motoko)
-│   └── main.mo              # Main canister entry point
-├── icp-canister/            # Standalone insurance canister
-│   ├── src/lib.rs          # Rust implementation
-│   ├── Cargo.toml          # Rust dependencies
-│   └── dfx.json            # Deployment config
+├── contracts/
+│   ├── Paramify.sol          # Main insurance contract
+│   └── mocks/
+│       └── MockV3Aggregator.sol # Mock Chainlink oracle
+├── backend/
+│   ├── server.js             # Node.js backend with USGS integration
+│   ├── package.json          # Backend dependencies
+│   └── .env                  # Contract addresses and configuration
 ├── frontend/
-│   ├── src/                # React frontend source
-│   ├── declarations/       # Generated canister interfaces
-│   └── package.json        # Frontend dependencies
-├── interfaces/             # Candid interface definitions
-├── dfx.json               # Main deployment configuration
-├── package.json           # Root dependencies
-└── README.md              # This file
+│   ├── src/                  # React frontend source
+│   ├── package.json          # Frontend dependencies
+│   └── vite.config.ts        # Vite configuration (port 8080)
+├── scripts/
+│   ├── deploy.js             # Deploy contracts
+│   ├── fund-contract.js      # Fund contract with ETH
+│   └── check-policy.js       # Check policy and balances
+├── test/
+│   └── Paramify.test.js      # Unit tests
+├── hardhat.config.js         # Hardhat configuration
+├── package.json              # Root dependencies
+└── README.md                 # This file
 ```
 
 ## Security and Dependencies
 
-- **ICP Dependencies**:
-  - `@dfinity/agent`: For canister communication
-  - `@dfinity/principal`: For identity management
-  - `@dfinity/auth-client`: For Internet Identity integration
-- **Frontend Dependencies**:
-  - `react`, `typescript`, `vite`: Modern web development stack
-  - `@dfinity/candid`: For type-safe canister calls
-- **Security Features**:
-  - Principal-based access control
-  - Stable memory for data persistence
-  - HTTPS outcalls for external API integration
-  - Role-based permissions (admin, oracle, user)
+- **Dependencies**:
+  - `@openzeppelin/contracts@5.0.2`: For AccessControl.
+  - `@chainlink/contracts@1.2.0`: For AggregatorV3Interface.
+  - `hardhat`, `ethers`, `@nomicfoundation/hardhat-toolbox`: For development.
+- **Vulnerability Check**:
+  ```bash
+  npm audit fix
+  npm audit
+  ```
+  - Address any high-severity issues before deployment.
 
 ## Future Enhancements
 
-- **ICRC-1 Token Integration**: Full token support for premium payments and payouts
-- **Multi-Location Support**: Expand to monitor multiple flood-prone areas
-- **Advanced Analytics**: Historical data analysis and risk assessment
-- **Mobile App**: Native mobile application with push notifications
-- **Governance**: Decentralized governance for threshold and parameter updates
-- **Cross-Chain**: Bridge to other blockchains for broader accessibility
+- **Avalanche Integration**:
+  - Deploy on Avalanche C-Chain for EVM compatibility.
+  - Integrate with Avalanche-native oracles for real-world data.
+- **Real Oracle Data**: Replace `MockV3Aggregator` with Chainlink’s flood level data feed.
+- **Multi-Policy Support**: Allow users to hold multiple policies.
+- **Frontend Polish**: Add a custom logo, improve UX, and support mobile views.
 
 
 ## Troubleshooting
 
-- **DFX not found:**
-  - Add DFX to PATH: `export PATH=$HOME/bin:$PATH`
-  - Restart terminal or run `source ~/.bashrc`
-- **Replica connection failed:**
-  - Stop and restart: `dfx stop && dfx start --clean`
-  - Check if port 4943 is available: `lsof -i :4943`
-- **Canister deployment fails:**
-  - Ensure replica is running: `dfx ping`
-  - Check cycles balance: `dfx wallet balance`
-  - Clear build cache: `rm -rf .dfx && dfx build --clean`
-- **Frontend not connecting:**
-  - Verify canisters are deployed: `dfx canister status --all`
-  - Check frontend is using correct canister IDs
-  - Ensure Internet Identity is properly configured
-- **Authentication issues:**
-  - Clear browser cache and cookies
-  - Try different Internet Identity provider
-  - Check if local replica is running on correct port
+- **Backend server not starting:**
+  - Ensure Node.js is installed and run `npm install` in the backend directory.
+  - Check if port 3001 is available: `netstat -ano | findstr :3001` (Windows) or `lsof -i :3001` (Mac/Linux).
+- **Frontend not loading:**
+  - Ensure frontend is running on port 8080: `npm run dev` in the frontend directory.
+  - Check if port 8080 is available and kill conflicting processes if needed.
+- **No flood data updates:**
+  - Check the backend terminal for error messages.
+  - Verify the backend server is connected to the blockchain (should show "Connected to: 0xf39...").
+- **Contract address mismatch:**
+  - Update both `frontend/src/lib/contract.ts` and `backend/.env` with the new contract addresses after redeployment.
+- **MetaMask Issues:**
+  - Ensure Hardhat network is added and accounts are imported.
+  - Verify you're connected to the correct network (Chain ID 31337).
 
 ## License
 
@@ -324,4 +325,4 @@ MIT License. See [LICENSE](./LICENSE) for details.
 
 ---
 
-*Built on the Internet Computer Protocol - demonstrating the future of decentralized applications.*
+*Presented as a proof of concept for the Avalanche Summit Hackathon, May 2025.*

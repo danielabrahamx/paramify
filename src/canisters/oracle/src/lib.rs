@@ -10,9 +10,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::time::Duration;
 
-#[cfg(test)]
-mod tests;
-
 // ============================================
 // Type Definitions
 // ============================================
@@ -402,7 +399,7 @@ fn get_status() -> OracleStatus {
     OracleStatus {
         total_updates: stats.total_updates,
         last_update_time: stats.last_update_time,
-        last_error: stats.last_error.clone(),
+        last_error: stats.last_error,
         cached_locations: locations,
         is_paused: config.is_paused,
         update_interval_seconds: config.update_interval_seconds,

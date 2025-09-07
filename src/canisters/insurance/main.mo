@@ -15,7 +15,6 @@ import Error "mo:base/Error";
 
 import Oracle "../oracle/oracle";
 import Payments "../payments/payments";
-import Validation "./validation";
 
 // Insurance Canister - Core flood insurance policy management
 actor Insurance {
@@ -323,7 +322,7 @@ actor Insurance {
                     startTime = now;
                     expirationTime = expirationTime;
                     status = #Active;
-                    location = sanitizedLocation;
+                    location = request.location;
                     thresholdFeet = defaultThresholdFeet;
                     paidOutTime = null;
                     paidOutAmount = null;

@@ -7,14 +7,9 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// USGS API Configuration
 const USGS_SITE_ID = '01646500';
 const USGS_PARAMETER_CODE = '00065';
 const USGS_API_URL = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${USGS_SITE_ID}&parameterCd=${USGS_PARAMETER_CODE}&siteStatus=all`;
-
-// Flood Monitoring Configuration
-const FLOOD_THRESHOLD_FEET = 10.0; // 10 feet threshold for flood alerts
-const DATA_UPDATE_INTERVAL_MINUTES = 5; // Update every 5 minutes
 
 app.use(cors());
 app.use(express.json());
@@ -44,7 +39,8 @@ async function fetchUSGSData() {
     
     console.log(`📊 Latest water level: ${waterLevelFeet} ft at ${timestamp}`);
     
-    const isFloodCondition = waterLevelFeet > FLOOD_THRESHOLD_FEET;
+    const FLOOD_THRESHOLD = 10.0;
+    const isFloodCondition = waterLevelFeet > FLOOD_THRESHOLD;
     
     latestFloodData = {
       value: waterLevelFeet,
@@ -52,13 +48,13 @@ async function fetchUSGSData() {
       lastUpdate: new Date().toISOString(),
       status: 'active',
       isFloodCondition: isFloodCondition,
-      threshold: FLOOD_THRESHOLD_FEET
+      threshold: FLOOD_THRESHOLD
     };
     
     if (isFloodCondition) {
-      console.log(`🚨 FLOOD ALERT! Water level ${waterLevelFeet}ft exceeds threshold ${FLOOD_THRESHOLD_FEET}ft`);
+      console.log(`🚨 FLOOD ALERT! Water level ${waterLevelFeet}ft exceeds threshold ${FLOOD_THRESHOLD}ft`);
     } else {
-      console.log(`✅ Normal conditions: ${waterLevelFeet}ft below threshold ${FLOOD_THRESHOLD_FEET}ft`);
+      console.log(`✅ Normal conditions: ${waterLevelFeet}ft below threshold ${FLOOD_THRESHOLD}ft`);
     }
     
     return waterLevelFeet;
@@ -111,7 +107,7 @@ async function startServer() {
     console.log('\n🔄 Initial USGS data fetch...');
     await fetchUSGSData();
     
-    cron.schedule(`*/${DATA_UPDATE_INTERVAL_MINUTES} * * * *`, async () => {
+    cron.schedule('*/5 * * * *', async () => {
       console.log('\n⏰ Scheduled flood data update...');
       try {
         await fetchUSGSData();

@@ -1,10 +1,11 @@
 {
-  "replica_rev": "044cfd5147fc97d7e5a214966941b6580c325d72",
-  "type": "replica",
+  "replica_rev": "615045e039c57ed842c689e49a07ab3de3a8a781",
+  "effective_canister_id": "uqqxf-5h777-77774-qaaaa-cai",
+  "type": "pocket_ic",
   "config": {
     "http_handler": {
       "port": null,
-      "write_port_to": "/mnt/c/Users/danie/Paramify-5/icp-canister/.dfx/network/local/replica-configuration/replica-1.port"
+      "write_port_to": null
     },
     "state_manager": {
       "state_root": "/mnt/c/Users/danie/Paramify-5/icp-canister/.dfx/network/local/state/replicated_state"
@@ -22,10 +23,9 @@
     },
     "canister_http_adapter": {
       "enabled": true,
-      "socket_path": "/tmp/ic-https-outcalls-adapter-socket.9490.1756907484"
+      "socket_path": null
     },
     "log_level": "error",
-    "artificial_delay": 600,
-    "use_old_metering": false
+    "artificial_delay": 600
   }
 }

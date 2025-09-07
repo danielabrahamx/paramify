@@ -34,7 +34,7 @@ async function initializeICP() {
         'get_flood_level': IDL.Func([], [IDL.Int64], ['query']),
         'set_flood_level': IDL.Func([IDL.Int64], [IDL.Variant({ 'Ok': IDL.Null, 'Err': IDL.Text })], []),
         'get_flood_threshold': IDL.Func([], [IDL.Nat64], ['query']),
-        'get_policy_stats': IDL.Func([], [IDL.Tuple(IDL.Nat64, IDL.Nat64, IDL.Nat64)], ['query']),
+        'get_policy_stats': IDL.Func([], [[IDL.Nat64, IDL.Nat64, IDL.Nat64]], ['query']),
       });
     };
 
