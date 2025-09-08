@@ -44,9 +44,6 @@
     "prettier": "^3.2.4",
     "husky": "^9.0.10",
     "lint-staged": "^15.2.1",
-    "vessel": "^0.7.0",
-    "mo-fmt": "^0.2.0",
-    "mo-doc": "^0.2.0"
   },
   "dependencies": {
     "dotenv": "^16.4.1",
@@ -77,7 +74,6 @@
   "homepage": "https://github.com/danielabrahamx/Paramify#readme",
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json,css,md}": "prettier --write",
-    "*.mo": "mo-fmt",
     "*.rs": "cargo fmt --"
   }
 }
