@@ -32,6 +32,7 @@ export default function IndividualDashboard({ setUserType }: IndividualDashboard
   const [nextUpdateCountdown, setNextUpdateCountdown] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
+  const [walletBalance, setWalletBalance] = useState<number>(100); // Simulated wallet balance
 
   useEffect(() => {
     if (isAuthenticated()) {
@@ -40,6 +41,14 @@ export default function IndividualDashboard({ setUserType }: IndividualDashboard
         setPrincipal(formatPrincipal(currentPrincipal));
         loadPolicies();
       }
+    }
+    
+    // Load saved threshold from localStorage (shared with admin)
+    const savedThreshold = localStorage.getItem('floodThreshold');
+    if (savedThreshold) {
+      const thresholdValue = parseFloat(savedThreshold);
+      setThreshold(thresholdValue);
+      setThresholdUnits(thresholdValue * 100000000000);
     }
   }, []);
 
@@ -59,12 +68,8 @@ export default function IndividualDashboard({ setUserType }: IndividualDashboard
         
         // Handle the actual backend response format
         const floodLevel = data.level || 0;
-        const threshold = 12.0; // Default threshold
-        const thresholdUnits = threshold * 100000000000;
         
         setFloodLevel(floodLevel);
-        setThreshold(threshold);
-        setThresholdUnits(thresholdUnits);
         setIsBackendConnected(true);
         setMessage(`✅ Connected to real USGS data - ${data.stationName}`);
         
@@ -96,7 +101,7 @@ export default function IndividualDashboard({ setUserType }: IndividualDashboard
     fetchData();
     const interval = setInterval(fetchData, 30000); // Update every 30 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [threshold]); // Re-fetch when threshold changes
 
   useEffect(() => {
     if (serviceStatus?.nextUpdate) {
@@ -138,8 +143,14 @@ export default function IndividualDashboard({ setUserType }: IndividualDashboard
         return;
       }
       
+      if (amount > walletBalance) {
+        setMessage("❌ Insufficient wallet balance");
+        return;
+      }
+      
       const result = await createPolicy(amount);
       if (result.success) {
+        setWalletBalance(walletBalance - amount); // Deduct from wallet
         setMessage(`✅ Insurance policy purchased! Coverage: $${coverageAmount}M`);
         await loadPolicies(); // Reload policies
       } else {
@@ -160,7 +171,9 @@ export default function IndividualDashboard({ setUserType }: IndividualDashboard
       setIsLoading(true);
       const result = await claimPayout(activePolicy.id);
       if (result.success) {
-        setMessage(`✅ Payout claimed! Amount: $${(activePolicy.coverageAmount).toFixed(1)}M`);
+        const payoutAmount = activePolicy.coverageAmount;
+        setWalletBalance(walletBalance + payoutAmount); // Add to wallet
+        setMessage(`✅ Payout claimed! Amount: $${payoutAmount.toFixed(1)}M`);
         await loadPolicies(); // Reload policies
       } else {
         setMessage("❌ Failed to claim payout");
@@ -194,8 +207,22 @@ export default function IndividualDashboard({ setUserType }: IndividualDashboard
         </div>
 
         <h1 className="text-4xl font-bold text-white mb-8 text-center">
-          Individual Dashboard
+          Customer Dashboard
         </h1>
+
+        {/* Wallet Balance */}
+        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 mb-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-white flex items-center">
+              <Wallet className="h-6 w-6 mr-2" />
+              Wallet Balance
+            </h2>
+            <div className="text-right">
+              <p className="text-3xl font-bold text-white">${walletBalance.toFixed(1)}M</p>
+              <p className="text-white/60 text-sm">Internet Identity Wallet</p>
+            </div>
+          </div>
+        </div>
 
         {/* USGS Data Status */}
         <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 mb-8">
@@ -302,7 +329,7 @@ export default function IndividualDashboard({ setUserType }: IndividualDashboard
                   className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   placeholder="1.0"
                   min="0.1"
-                  max="10"
+                  max={walletBalance}
                   step="0.1"
                 />
               </div>
@@ -314,7 +341,7 @@ export default function IndividualDashboard({ setUserType }: IndividualDashboard
               
               <button
                 onClick={handleBuyInsurance}
-                disabled={isLoading || activePolicy?.isActive}
+                disabled={isLoading || activePolicy?.isActive || parseFloat(coverageAmount) > walletBalance}
                 className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-500 disabled:to-gray-600 text-white text-lg py-4 px-6 rounded-lg font-semibold transition-all duration-200"
               >
                 {isLoading ? (

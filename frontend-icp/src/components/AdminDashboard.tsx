@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Waves, Shield, TrendingUp, Wallet, AlertCircle, CheckCircle, ArrowLeft, Activity, RefreshCw, Settings, DollarSign } from "lucide-react";
-import { getCurrentPrincipal, formatPrincipal, isAuthenticated, isAdminPrincipal } from "../lib/icp";
+import { getCurrentPrincipal, formatPrincipal, isAuthenticated, isAdminPrincipal, updateThreshold, fundContract } from "../lib/icp";
 import { usgsApi, formatTimestamp, getTimeUntilNextUpdate, type ServiceStatus } from "../lib/usgsApi";
 
 interface AdminDashboardProps {
@@ -32,6 +32,14 @@ export default function AdminDashboard({ setUserType }: AdminDashboardProps) {
         setIsAdmin(isAdminPrincipal(currentPrincipal));
       }
     }
+    
+    // Load saved threshold from localStorage
+    const savedThreshold = localStorage.getItem('floodThreshold');
+    if (savedThreshold) {
+      const thresholdValue = parseFloat(savedThreshold);
+      setThreshold(thresholdValue);
+      setThresholdUnits(thresholdValue * 100000000000);
+    }
   }, []);
 
   useEffect(() => {
@@ -50,12 +58,8 @@ export default function AdminDashboard({ setUserType }: AdminDashboardProps) {
         
         // Handle the actual backend response format
         const floodLevel = data.level || 0;
-        const threshold = 12.0; // Default threshold
-        const thresholdUnits = threshold * 100000000000;
         
         setFloodLevel(floodLevel);
-        setThreshold(threshold);
-        setThresholdUnits(thresholdUnits);
         setIsBackendConnected(true);
         setMessage(`✅ Connected to real USGS data - ${data.stationName}`);
         
@@ -87,7 +91,7 @@ export default function AdminDashboard({ setUserType }: AdminDashboardProps) {
     fetchData();
     const interval = setInterval(fetchData, 30000); // Update every 30 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [threshold]); // Re-fetch when threshold changes
 
   useEffect(() => {
     if (serviceStatus?.nextUpdate) {
@@ -110,8 +114,11 @@ export default function AdminDashboard({ setUserType }: AdminDashboardProps) {
         return;
       }
 
+      // Update threshold in localStorage
+      localStorage.setItem('floodThreshold', thresholdFeet.toString());
+      
       // Simulate ICP call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await updateThreshold(thresholdFeet);
       
       setThreshold(thresholdFeet);
       setThresholdUnits(thresholdFeet * 100000000000);
@@ -135,7 +142,7 @@ export default function AdminDashboard({ setUserType }: AdminDashboardProps) {
       }
 
       // Simulate ICP call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await fundContract(amount);
       
       setContractBalance(contractBalance + amount);
       setFundAmount("");
