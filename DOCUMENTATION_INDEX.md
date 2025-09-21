@@ -9,6 +9,7 @@
 | **[AI_AGENT_README.md](./AI_AGENT_README.md)** | Complete guide for AI agents | 🤖 AI ESSENTIAL |
 | **[AI_CODEBASE_MAP.md](./AI_CODEBASE_MAP.md)** | Function-by-function reference | 🗺️ CODE REFERENCE |
 | **[ICP_DEPLOYMENT_GUIDE.md](./ICP_DEPLOYMENT_GUIDE.md)** | Step-by-step deployment instructions | 🚀 DEPLOYMENT |
+| **[DEPLOYMENT_LESSONS_LEARNED.md](./DEPLOYMENT_LESSONS_LEARNED.md)** | Real deployment experience and fixes | 🎯 TESTED PROCESS |
 | **[SECURITY_ASSESSMENT_REPORT.md](./SECURITY_ASSESSMENT_REPORT.md)** | Security vulnerabilities and fixes | 🔒 CRITICAL |
 
 ## ❌ Removed Documentation (OUTDATED - DO NOT USE)
@@ -35,8 +36,9 @@ The following files have been removed as they contained outdated information abo
 
 #### Deploy the application
 1. Follow [ICP_DEPLOYMENT_GUIDE.md](./ICP_DEPLOYMENT_GUIDE.md)
-2. Use [AI_QUICK_REFERENCE.md](./AI_QUICK_REFERENCE.md) for quick commands
-3. Check deployment section in [AI_AGENT_README.md](./AI_AGENT_README.md)
+2. Check [DEPLOYMENT_LESSONS_LEARNED.md](./DEPLOYMENT_LESSONS_LEARNED.md) for tested process
+3. Use [AI_QUICK_REFERENCE.md](./AI_QUICK_REFERENCE.md) for quick commands
+4. Reference deployment section in [AI_AGENT_README.md](./AI_AGENT_README.md)
 
 #### Find a specific function
 1. Search in [AI_CODEBASE_MAP.md](./AI_CODEBASE_MAP.md)
@@ -71,10 +73,11 @@ All current documentation follows these standards:
 
 ## 🔄 Documentation Version
 
-- **Version:** 1.0.0-secure
+- **Version:** 1.1.0-secure
 - **Branch:** icp-secure
-- **Last Updated:** September 2024
-- **Status:** Production Ready (with security fixes applied)
+- **Last Updated:** September 21, 2025
+- **Status:** Production Ready (with security fixes applied + deployment tested)
+- **New:** Added DEPLOYMENT_LESSONS_LEARNED.md with tested deployment process
 
 ---
 

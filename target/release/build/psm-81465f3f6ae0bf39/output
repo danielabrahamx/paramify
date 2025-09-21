@@ -1,6 +1,6 @@
 cargo:rustc-check-cfg=cfg(switchable_stack,asm,link_asm)
 OPT_LEVEL = Some(0)
-OUT_DIR = Some(/home/danie/projects/Paramify/target/release/build/psm-81465f3f6ae0bf39/out)
+OUT_DIR = Some(/home/danie/Paramify-icp-secure/target/release/build/psm-81465f3f6ae0bf39/out)
 TARGET = Some(x86_64-unknown-linux-gnu)
 HOST = Some(x86_64-unknown-linux-gnu)
 cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu
@@ -46,4 +46,4 @@ ARFLAGS_x86_64_unknown_linux_gnu = None
 cargo:rerun-if-env-changed=ARFLAGS_x86_64-unknown-linux-gnu
 ARFLAGS_x86_64-unknown-linux-gnu = None
 cargo:rustc-link-lib=static=psm_s
-cargo:rustc-link-search=native=/home/danie/projects/Paramify/target/release/build/psm-81465f3f6ae0bf39/out
+cargo:rustc-link-search=native=/home/danie/Paramify-icp-secure/target/release/build/psm-81465f3f6ae0bf39/out

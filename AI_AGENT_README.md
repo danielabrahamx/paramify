@@ -117,33 +117,37 @@ ORACLE_SEED_PHRASE=<hex_seed>   # For oracle identity (production only)
 ### Local Development
 ```bash
 # 1. Start local ICP replica
-dfx start --clean
+dfx start --clean --background
 
-# 2. Deploy canister
-dfx deploy paramify_insurance
+# 2. Create identities
+dfx identity new admin && dfx identity use admin
+dfx identity new oracle
 
-# 3. Start USGS data server (CRITICAL FOR FRONTEND!)
+# 3. Deploy canister with admin
+dfx deploy paramify_insurance --argument "(opt principal \"$(dfx identity get-principal)\")"
+
+# 4. Deploy Internet Identity (ESSENTIAL!)
+dfx deps deploy internet_identity
+
+# 5. Start USGS data server (CRITICAL FOR FRONTEND!)
 cd backend
 npm install
 node usgs-server.js &
 
-# 4. Start oracle service (optional for local testing)
-node icp-oracle-fixed.js &
+# 6. Configure oracle
+dfx canister call paramify_insurance add_oracle_updater "(principal \"$(dfx identity use oracle && dfx identity get-principal)\")"
 
-# 5. Start frontend
-cd frontend-icp
+# 7. Start frontend (RECOMMENDED METHOD)
+cd frontend
 npm install
-npm run dev
+npm run dev  # More reliable than dfx deploy frontend
 ```
 
-**⚠️ CRITICAL:** The USGS server (step 3) is essential! Without it:
-- Frontend dashboards show "USGS Data Status: Disconnected"
-- Flood level shows 0.00 ft
-- Insurance purchases may fail
-
-**Note:** USGS server vs Oracle service:
-- **USGS Server** (`usgs-server.js`): Provides data to frontend UI (required)
-- **Oracle Service** (`icp-oracle-fixed.js`): Updates blockchain canister (optional for local dev)
+**⚠️ CRITICAL NOTES:**
+- Internet Identity deployment is required: `dfx deps deploy internet_identity`
+- Frontend canister deployment often hangs - use `npm run dev` instead
+- USGS server must run separately from oracle service
+- Always check canister IDs with `dfx canister id <name>` - they're dynamically generated
 
 ### Production Deployment
 ```bash
@@ -283,6 +287,11 @@ dfx canister call paramify_insurance trigger_payout
 3. **"Policy already exists"** - User has active policy
 4. **"Flood level below threshold"** - Normal, payout not triggered
 5. **"Re-entrancy detected"** - Concurrent modification attempted
+6. **"Internet Identity 404"** - Run `dfx deps deploy internet_identity`
+7. **"Frontend deployment hangs"** - Use `npm run dev` instead of `dfx deploy frontend`
+8. **"Wrong canister ID in frontend"** - Update `frontend/src/lib/icp.ts` with correct ID
+9. **"Oracle unauthorized"** - Re-authorize with `add_oracle_updater` as admin
+10. **"No policy found"** - Create policy first or check user identity matches
 
 ### Debug Commands
 ```bash

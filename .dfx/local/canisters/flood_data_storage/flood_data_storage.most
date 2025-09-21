@@ -1,7 +1,7 @@
 // Version: 1.0.0
-type FloodData__893407568 =
+type FloodData__240678256 =
   {level : Float; stationId : Text; timestamp : Int};
 actor {
   stable var admin : ?Principal;
-  stable var floodDataEntries : [(Text, FloodData__893407568)]
+  stable var floodDataEntries : [(Text, FloodData__240678256)]
 };

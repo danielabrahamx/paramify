@@ -30,7 +30,7 @@ interface CanisterActor {
 
 // Configuration
 const IS_PRODUCTION = import.meta.env.NODE_ENV === "production";
-const CANISTER_ID = import.meta.env.VITE_CANISTER_ID_PARAMIFY_INSURANCE || "uxrrr-q7777-77774-qaaaq-cai";
+const CANISTER_ID = import.meta.env.VITE_CANISTER_ID_PARAMIFY_INSURANCE || "umunu-kh777-77774-qaaca-cai";
 const ICP_HOST = IS_PRODUCTION ? "https://ic0.app" : "http://127.0.0.1:4943";
 
 // Identity provider URL

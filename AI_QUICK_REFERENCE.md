@@ -20,16 +20,23 @@ cp backend/icp-oracle-fixed.js backend/icp-oracle.js
 ## ⚡ Quick Deploy (Local)
 ```bash
 # 1. Start ICP
-dfx start --clean
+dfx start --clean --background
 
-# 2. Deploy contract
-dfx deploy paramify_insurance
+# 2. Deploy contract with admin
+dfx identity use admin  # Create with: dfx identity new admin
+dfx deploy paramify_insurance --argument "(opt principal \"$(dfx identity get-principal)\")"
 
-# 3. Start USGS server (CRITICAL!)
+# 3. Deploy Internet Identity (CRITICAL!)
+dfx deps deploy internet_identity
+
+# 4. Start USGS server (CRITICAL!)
 cd backend && node usgs-server.js &
 
-# 4. Start frontend (new terminal)
-cd frontend-icp && npm run dev
+# 5. Start frontend (recommended method)
+cd frontend && npm run dev
+
+# 6. Update frontend config with correct canister ID if needed
+# Edit frontend/src/lib/icp.ts: CANISTER_ID = "$(dfx canister id paramify_insurance)"
 ```
 
 **⚠️ USGS Server is REQUIRED:**
@@ -115,6 +122,10 @@ dfx canister call paramify_insurance get_cycles_balance
 | "Re-entrancy detected" | Sequential calls only |
 | "Policy already exists" | User has active policy |
 | "Flood below threshold" | Normal - no payout yet |
+| "Internet Identity 404" | `dfx deps deploy internet_identity` |
+| "Frontend hangs on deploy" | Use `npm run dev` instead of `dfx deploy frontend` |
+| "Wrong canister ID error" | Update `frontend/src/lib/icp.ts` with correct ID |
+| "Oracle unauthorized" | Re-run `add_oracle_updater` as admin |
 
 ## 📁 File Structure Pattern
 ```

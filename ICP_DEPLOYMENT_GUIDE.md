@@ -2,8 +2,20 @@
 
 ## Table of Contents
 1. [Prerequisites](#prerequisites)
-2. [Local Development Setup](#local-development-setup)
-3. [Testnet Deployment](#testnet-deployment)
+2. [Local Development Setup](#local-development-setu**Step 2: Deploy to Testnet**
+```bash
+# Set testnet as target
+export NETWORK=testnet
+
+# Deploy canister
+dfx deploy --network $NETWORK paramify_insurance --with-cycles 1000000000000
+
+# Get testnet canister ID
+export TESTNET_CANISTER_ID=$(dfx canister --network $NETWORK id paramify_insurance)
+echo "Testnet Canister ID: $TESTNET_CANISTER_ID"
+```
+
+**DEPLOYMENT NOTE:** The actual deployment creates dynamic canister IDs that differ from documentation examples. Always use `dfx canister id <canister_name>` to get the correct IDs for your deployment.et Deployment](#testnet-deployment)
 4. [Mainnet Deployment](#mainnet-deployment)
 5. [Post-Deployment Configuration](#post-deployment-configuration)
 6. [Monitoring & Maintenance](#monitoring--maintenance)
@@ -78,9 +90,12 @@ dfx identity use admin
 # Deploy with initialization arguments
 dfx deploy paramify_insurance --argument "(opt principal \"$ADMIN_PRINCIPAL\")"
 
-# Get canister ID
+# Get actual canister ID (will be dynamically generated)
 export CANISTER_ID=$(dfx canister id paramify_insurance)
 echo "Canister ID: $CANISTER_ID"
+
+# IMPORTANT: If deployment fails with "no Wasm module", reinstall:
+dfx canister install paramify_insurance --mode reinstall
 ```
 
 ### Step 4: Configure Oracle
@@ -114,6 +129,7 @@ curl http://localhost:3001/flood-data
 - Provides flood data to admin and customer dashboards
 - Without it, dashboards show "USGS Data Status: Disconnected"
 - Required for insurance transactions to function properly
+- **Must run separately from the oracle service**
 
 ### Step 6: Start Oracle Service (Optional for Local Testing)
 ```bash
@@ -129,14 +145,22 @@ npm start
 
 ### Step 7: Deploy Frontend
 ```bash
-# Build and deploy frontend
-cd frontend-icp
-npm run build
-dfx deploy frontend
+# Note: Frontend deployment often hangs due to build complexity
+# Alternative approach - run frontend development server directly:
 
-# Get frontend URL
-echo "Frontend URL: http://$(dfx canister id frontend).localhost:8000"
+cd frontend
+npm install
+npm run dev
+
+# This starts frontend at http://localhost:5173 (typical Vite port)
+# Update frontend/src/lib/icp.ts with correct canister ID if needed:
+# const CANISTER_ID = "your-actual-canister-id"
+
+# If you need dfx frontend deployment:
+# dfx deploy frontend (may hang - Ctrl+C if needed)
 ```
+
+**Note:** Frontend deployment via dfx can hang due to build complexity. Running `npm run dev` directly is more reliable for local testing.
 
 ### Step 8: Test Local Deployment
 ```bash
@@ -159,9 +183,45 @@ dfx identity use default
 dfx canister call paramify_insurance trigger_payout
 ```
 
----
+## Common Deployment Issues & Solutions
 
-## Testnet Deployment
+### Internet Identity 404 Error
+**Problem:** Clicking "Connect with Internet Identity" shows 404 error.
+**Solution:** 
+```bash
+# Deploy Internet Identity canister
+dfx deps deploy internet_identity
+# OR
+dfx deploy internet_identity
+```
+
+### Frontend Shows Wrong Canister ID
+**Problem:** Authentication fails with "Canister not found" error.
+**Solution:** Update frontend configuration with correct canister ID:
+```bash
+# Get correct canister ID
+dfx canister id paramify_insurance
+
+# Update frontend/src/lib/icp.ts:
+# const CANISTER_ID = "your-actual-canister-id"
+```
+
+### Oracle Authorization Issues
+**Problem:** "Unauthorized: Oracle updater access required"
+**Solution:**
+```bash
+# Switch to admin and re-authorize oracle
+dfx identity use admin
+dfx canister call paramify_insurance add_oracle_updater "(principal \"oracle-principal-id\")"
+```
+
+### Frontend Build Hangs
+**Problem:** `dfx deploy frontend` hangs indefinitely.
+**Solution:** Use development server instead:
+```bash
+cd frontend
+npm run dev  # Much more reliable
+```
 
 ### Step 1: Get Testnet Cycles
 ```bash

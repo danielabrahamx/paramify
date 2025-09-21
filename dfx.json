@@ -16,25 +16,7 @@
         "node_compatibility": true
       }
     },
-    "oracle": {
-      "type": "rust",
-      "package": "oracle",
-      "candid": "src/canisters/oracle/oracle.did",
-      "declarations": {
-        "output": "frontend/src/declarations/oracle",
-        "bindings": ["js", "ts", "did"],
-        "node_compatibility": true
-      }
-    },
-    "flood_data_storage": {
-      "type": "motoko",
-      "main": "icp-integration/src/flood_data_storage/main.mo",
-      "declarations": {
-        "output": "frontend/src/declarations/flood_data_storage",
-        "bindings": ["js", "ts", "did"],
-        "node_compatibility": true
-      }
-    },
+
     "frontend": {
       "type": "assets",
       "source": ["frontend/dist"],
