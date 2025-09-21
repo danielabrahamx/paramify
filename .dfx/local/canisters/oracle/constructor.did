@@ -1,0 +1,52 @@
+type CachedData = record { data : FloodData; cached_at : nat64 };
+type FloodData = record {
+  water_level_feet : float64;
+  source : text;
+  site_name : text;
+  timestamp : nat64;
+  location : text;
+};
+type HttpResponse = record {
+  status : nat;
+  body : blob;
+  headers : vec record { text; text };
+};
+type InitArgs = record {
+  update_interval_seconds : opt nat64;
+  authorized_principals : opt vec principal;
+};
+type OracleConfig = record {
+  update_interval_seconds : nat64;
+  authorized_principals : vec principal;
+  is_paused : bool;
+  max_retries : nat32;
+  usgs_base_url : text;
+};
+type OracleStatus = record {
+  last_error : opt text;
+  total_updates : nat64;
+  last_update_time : opt nat64;
+  update_interval_seconds : nat64;
+  cached_locations : vec text;
+  is_paused : bool;
+};
+type TransformArgs = record { context : blob; response : HttpResponse };
+service : (opt InitArgs) -> {
+  add_authorized_principal : (principal) -> (variant { Ok : text; Err : text });
+  batch_update : (vec text) -> (
+      vec record { text; variant { Ok : FloodData; Err : text } },
+    );
+  clear_cache : () -> (variant { Ok : text; Err : text });
+  get_all_cached_locations : () -> (vec text) query;
+  get_cached_data : (text) -> (opt CachedData) query;
+  get_configuration : () -> (OracleConfig) query;
+  get_latest_data : (text) -> (variant { Ok : FloodData; Err : text }) query;
+  get_status : () -> (OracleStatus) query;
+  manual_update : (text) -> (variant { Ok : FloodData; Err : text });
+  remove_authorized_principal : (principal) -> (
+      variant { Ok : text; Err : text },
+    );
+  set_paused : (bool) -> (variant { Ok : text; Err : text });
+  transform_usgs_response : (TransformArgs) -> (HttpResponse) query;
+  update_configuration : (OracleConfig) -> (variant { Ok : text; Err : text });
+}

@@ -75,9 +75,6 @@ dfx identity use admin
 
 ### Step 3: Deploy Canister Locally
 ```bash
-# First, update the canister code to use lib_fixed.rs
-cp icp-canister/src/lib_fixed.rs icp-canister/src/lib.rs
-
 # Deploy with initialization arguments
 dfx deploy paramify_insurance --argument "(opt principal \"$ADMIN_PRINCIPAL\")"
 
@@ -101,22 +98,37 @@ NODE_ENV=development
 EOF
 ```
 
-### Step 5: Start Oracle Service
+### Step 5: Start USGS Data Server (CRITICAL!)
 ```bash
-# Use the fixed oracle version
-cp backend/icp-oracle-fixed.js backend/icp-oracle.js
-
-# Start oracle
+# This provides real-time flood data to the frontend
 cd backend
-npm start
-# Oracle will update flood levels every 5 minutes
+npm install
+node usgs-server.js &
+
+# Verify it's running
+curl http://localhost:3001/flood-data
+# Should return: {"level": X.XX, "timestamp": "...", "stationName": "..."}
 ```
 
-### Step 6: Deploy Frontend
-```bash
-# Update frontend to use fixed authentication
-cp frontend-icp/src/lib/icp_fixed.ts frontend-icp/src/lib/icp.ts
+**⚠️ CRITICAL:** This USGS server is essential for the frontend to work:
+- Provides flood data to admin and customer dashboards
+- Without it, dashboards show "USGS Data Status: Disconnected"
+- Required for insurance transactions to function properly
 
+### Step 6: Start Oracle Service (Optional for Local Testing)
+```bash
+# This updates the ICP canister with flood data (runs separately from USGS server)
+cd backend
+npm start
+# Oracle will update flood levels in the canister every 5 minutes
+```
+
+**Note:** The Oracle and USGS server are different:
+- **USGS Server** (usgs-server.js): Provides data to frontend UI
+- **Oracle Service** (icp-oracle.js): Updates the blockchain canister
+
+### Step 7: Deploy Frontend
+```bash
 # Build and deploy frontend
 cd frontend-icp
 npm run build
@@ -126,7 +138,7 @@ dfx deploy frontend
 echo "Frontend URL: http://$(dfx canister id frontend).localhost:8000"
 ```
 
-### Step 7: Test Local Deployment
+### Step 8: Test Local Deployment
 ```bash
 # Check health
 dfx canister call paramify_insurance health_check
@@ -203,7 +215,6 @@ dfx canister --network $NETWORK logs paramify_insurance
 ## Mainnet Deployment
 
 ### ⚠️ Pre-Deployment Checklist
-- [ ] All security fixes applied (use `*_fixed` files)
 - [ ] Security audit completed
 - [ ] Testnet testing successful
 - [ ] Cycles wallet funded (minimum 5T cycles)
@@ -281,7 +292,7 @@ EOF
 # Deploy oracle to production server (e.g., AWS, GCP)
 # Use PM2 for process management
 npm install -g pm2
-pm2 start backend/icp-oracle-fixed.js --name paramify-oracle
+pm2 start backend/icp-oracle.js --name paramify-oracle
 pm2 save
 pm2 startup
 ```

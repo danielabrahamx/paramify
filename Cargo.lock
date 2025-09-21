@@ -1199,6 +1199,7 @@ dependencies = [
  "candid",
  "ic-cdk",
  "ic-cdk-macros 0.9.0",
+ "num-traits",
  "serde",
 ]
 

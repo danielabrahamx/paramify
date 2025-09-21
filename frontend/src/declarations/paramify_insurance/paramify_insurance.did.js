@@ -52,6 +52,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat64, IDL.Nat64, IDL.Nat64],
         ['query'],
       ),
+    'health_check' : IDL.Func(
+        [],
+        [IDL.Bool, IDL.Text, IDL.Nat64, IDL.Int64, IDL.Nat64],
+        ['query'],
+      ),
     'is_payout_eligible' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
     'mirror_batch_upsert_policies' : IDL.Func(
         [IDL.Vec(MirrorPolicy)],

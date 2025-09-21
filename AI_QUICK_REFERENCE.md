@@ -25,12 +25,17 @@ dfx start --clean
 # 2. Deploy contract
 dfx deploy paramify_insurance
 
-# 3. Start oracle (Terminal 2)
-cd backend && npm start
+# 3. Start USGS server (CRITICAL!)
+cd backend && node usgs-server.js &
 
-# 4. Start frontend (Terminal 3)
+# 4. Start frontend (new terminal)
 cd frontend-icp && npm run dev
 ```
+
+**⚠️ USGS Server is REQUIRED:**
+- Without it: "USGS Data Status: Disconnected"
+- Provides flood data to admin/customer dashboards
+- Essential for insurance transactions
 
 ## 🎯 Core Functions
 

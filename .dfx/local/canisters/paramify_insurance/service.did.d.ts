@@ -47,6 +47,7 @@ export interface _SERVICE {
   'get_policy' : ActorMethod<[bigint], [] | [Policy]>,
   'get_policy_by_holder' : ActorMethod<[Principal], [] | [Policy]>,
   'get_policy_stats' : ActorMethod<[], [bigint, bigint, bigint]>,
+  'health_check' : ActorMethod<[], [boolean, string, bigint, bigint, bigint]>,
   'is_payout_eligible' : ActorMethod<[Principal], boolean>,
   'mirror_batch_upsert_policies' : ActorMethod<
     [Array<MirrorPolicy>],

@@ -49,4 +49,7 @@ service : {
   "mirror_clear_policies": () -> (variant { Ok; Err: text });
   "mirror_get_policies": () -> (vec MirrorPolicy) query;
   "mirror_get_policy_stats": () -> (nat64, nat64, nat64) query;
+
+  // Health check function
+  "health_check": () -> (bool, text, nat64, int64, nat64) query;
 }

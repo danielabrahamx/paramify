@@ -122,16 +122,28 @@ dfx start --clean
 # 2. Deploy canister
 dfx deploy paramify_insurance
 
-# 3. Start oracle service
+# 3. Start USGS data server (CRITICAL FOR FRONTEND!)
 cd backend
 npm install
-node icp-oracle-fixed.js
+node usgs-server.js &
 
-# 4. Start frontend
+# 4. Start oracle service (optional for local testing)
+node icp-oracle-fixed.js &
+
+# 5. Start frontend
 cd frontend-icp
 npm install
 npm run dev
 ```
+
+**⚠️ CRITICAL:** The USGS server (step 3) is essential! Without it:
+- Frontend dashboards show "USGS Data Status: Disconnected"
+- Flood level shows 0.00 ft
+- Insurance purchases may fail
+
+**Note:** USGS server vs Oracle service:
+- **USGS Server** (`usgs-server.js`): Provides data to frontend UI (required)
+- **Oracle Service** (`icp-oracle-fixed.js`): Updates blockchain canister (optional for local dev)
 
 ### Production Deployment
 ```bash

@@ -2,6 +2,10 @@
   "version": 1,
   "dfx": "0.29.0",
   "canisters": {
+    "internet_identity": {
+      "type": "pull",
+      "id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+    },
     "paramify_insurance": {
       "type": "rust",
       "package": "paramify_insurance",

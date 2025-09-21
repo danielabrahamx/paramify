@@ -22,12 +22,29 @@ cp icp-canister/src/lib_fixed.rs icp-canister/src/lib.rs
 cp frontend-icp/src/lib/icp_fixed.ts frontend-icp/src/lib/icp.ts
 cp backend/icp-oracle-fixed.js backend/icp-oracle.js
 
-# 3. Deploy locally
+# 3. Deploy locally (4 REQUIRED STEPS)
 dfx start --clean
 dfx deploy paramify_insurance
-cd backend && npm start
-cd ../frontend-icp && npm run dev
+
+# 4. START USGS SERVER (CRITICAL - APP WON'T WORK WITHOUT THIS!)
+cd backend && npm install && node usgs-server.js &
+
+# 5. Start frontend
+cd ../frontend-icp && npm install && npm run dev
 ```
+
+## 🚨 IMPORTANT: Required Services
+
+**Your app needs THREE services running simultaneously:**
+
+1. **ICP Local Network** (`dfx start`) - The blockchain
+2. **USGS Data Server** (`node usgs-server.js`) - Provides flood data to frontend 
+3. **Frontend** (`npm run dev`) - The user interface
+
+**⚠️ The USGS server is ESSENTIAL** - Without it:
+- Admin dashboard shows "USGS Data Status: Disconnected"
+- No flood level data displayed
+- Insurance purchases may fail
 
 ## 🎯 What is Paramify?
 
@@ -97,12 +114,14 @@ paramify/
 
 ### Local Development
 ```bash
-# Quick local setup
-dfx start --clean
-dfx deploy paramify_insurance
-npm run oracle:start
-npm run frontend:dev
+# Quick local setup - ALL STEPS REQUIRED
+dfx start --clean                        # 1. Start ICP network
+dfx deploy paramify_insurance            # 2. Deploy smart contract
+cd backend && node usgs-server.js &     # 3. Start USGS data server (CRITICAL!)
+cd ../frontend-icp && npm run dev       # 4. Start frontend
 ```
+
+**⚠️ Critical:** The USGS server provides real-time flood data to the frontend. Without it, the dashboards will show "Disconnected" status and insurance transactions may fail.
 
 ### Testnet Deployment
 ```bash
@@ -183,6 +202,51 @@ dfx canister call paramify_insurance get_cycles_balance
 ```bash
 dfx canister call paramify_insurance get_events '(null, opt 100)'
 ```
+
+## 🛠️ Troubleshooting
+
+### ❌ Common Issue: "USGS Data Status: Disconnected"
+
+**Problem:** Frontend shows flood level as 0.00 ft and "Disconnected" status
+**Cause:** USGS server not running
+**Solution:**
+```bash
+# Start the USGS data server
+cd backend
+node usgs-server.js
+```
+
+**Verify it's working:**
+```bash
+curl http://localhost:3001/flood-data
+# Should return flood data, not an error
+```
+
+### ❌ Common Issue: "Failed to purchase insurance"
+
+**Possible Causes:**
+1. USGS server not running (see above)
+2. ICP canister not deployed
+3. Not authenticated with Internet Identity
+4. Insufficient wallet balance
+
+**Debug Steps:**
+```bash
+# 1. Check canister health
+dfx canister call paramify_insurance health_check
+
+# 2. Check authentication in browser console
+# 3. Verify USGS server is running (see above)
+```
+
+### ⚠️ Required Services Checklist
+
+For the app to work properly, you need ALL of these running:
+
+- [ ] **ICP Network:** `dfx start` 
+- [ ] **Smart Contract:** `dfx deploy paramify_insurance`
+- [ ] **USGS Server:** `node backend/usgs-server.js` (Port 3001)
+- [ ] **Frontend:** `npm run dev` in frontend-icp folder
 
 ## 🛠️ Maintenance
 

@@ -24,8 +24,10 @@
     "canister:call:get_flood_data": "dfx canister call paramify_insurance get_flood_data --network local",
     "canister:call:get_status": "dfx canister call paramify_insurance get_system_status --network local",
     "oracle:start": "cd backend && npm start",
+    "usgs:start": "cd backend && node usgs-server.js",
     "oracle:update": "curl -X POST http://localhost:3001/update",
-    "dev": "npm run start && npm run deploy && npm run oracle:start",
+    "dev": "npm run start && npm run deploy && npm run usgs:start",
+    "dev:full": "npm run start && npm run deploy && concurrently \"npm run usgs:start\" \"npm run dev:frontend\"",
     "dev:frontend": "cd frontend && npm run dev",
     "identity:create": "dfx identity new --storage-mode=plaintext",
     "identity:list": "dfx identity list",
@@ -43,7 +45,7 @@
     "@dfinity/auth-client": "^1.1.0",
     "prettier": "^3.2.4",
     "husky": "^9.0.10",
-    "lint-staged": "^15.2.1",
+    "lint-staged": "^15.2.1"
   },
   "dependencies": {
     "dotenv": "^16.4.1",

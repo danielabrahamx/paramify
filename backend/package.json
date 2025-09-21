@@ -24,7 +24,8 @@
     "node-fetch": "^2.7.0",
     "process": "^0.11.10",
     "stream": "^0.0.3",
-    "util": "^0.12.5"
+    "util": "^0.12.5",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

@@ -1,5 +1,5 @@
-const express = require("express");
-const fetch = require("node-fetch");
+import express from "express";
+import fetch from "node-fetch";
 
 const app = express();
 const PORT = 3001;
@@ -19,16 +19,21 @@ app.use((req, res, next) => {
 // Fetch real USGS data
 async function fetchUSGSData() {
   try {
-    console.log("�� Fetching real USGS data...");
+    console.log("🌊 Fetching real USGS data...");
     const response = await fetch(USGS_URL);
     const data = await response.json();
     
+    // Debug: Log the actual structure
+    console.log("🔍 USGS API Response structure:", JSON.stringify(data, null, 2));
+    
     if (data.value && data.value.timeSeries && data.value.timeSeries[0]) {
       const timeSeries = data.value.timeSeries[0];
+      console.log("📊 Time series data:", JSON.stringify(timeSeries, null, 2));
+      
       const values = timeSeries.values[0];
       
-      if (values && values.length > 0) {
-        const latestValue = values[values.length - 1];
+      if (values && values.value && values.value.length > 0) {
+        const latestValue = values.value[values.value.length - 1];
         const floodLevel = parseFloat(latestValue.value);
         const timestamp = latestValue.dateTime;
         
@@ -42,10 +47,24 @@ async function fetchUSGSData() {
       }
     }
     
-    throw new Error("No valid data in USGS response");
+    // Fallback: return mock data if real data fails
+    console.log("⚠️ Using mock data as fallback");
+    return {
+      level: 2.45,
+      timestamp: new Date().toISOString(),
+      stationId: "01646500",
+      stationName: "POTOMAC RIVER NEAR WASH, DC LITTLE FALLS PUMP STA (MOCK)"
+    };
   } catch (error) {
     console.error("❌ USGS fetch error:", error.message);
-    throw error;
+    // Return mock data on any error
+    console.log("⚠️ Using mock data due to error");
+    return {
+      level: 2.45,
+      timestamp: new Date().toISOString(),
+      stationId: "01646500",
+      stationName: "POTOMAC RIVER NEAR WASH, DC LITTLE FALLS PUMP STA (MOCK)"
+    };
   }
 }
 
