@@ -1,0 +1,130 @@
+{
+  "name": "USGS Water Services",
+  "value": {
+    "timeSeries": [
+      {
+        "sourceInfo": {
+          "siteName": "POTOMAC RIVER NEAR WASH, DC LITTLE FALLS PUMP STA",
+          "siteCode": [
+            {
+              "value": "01646500",
+              "network": "NWIS",
+              "agencyCode": "USGS"
+            }
+          ],
+          "timeZoneInfo": {
+            "defaultTimeZone": {
+              "zoneOffset": "-05:00",
+              "zoneAbbreviation": "EST"
+            },
+            "daylightSavingsTimeZone": {
+              "zoneOffset": "-04:00",
+              "zoneAbbreviation": "EDT"
+            },
+            "siteUsesDaylightSavingsTime": true
+          },
+          "geoLocation": {
+            "geogLocation": {
+              "srs": "EPSG:4326",
+              "latitude": 38.94977778,
+              "longitude": -77.12763889
+            },
+            "localSiteXY": []
+          },
+          "note": [],
+          "siteType": [],
+          "siteProperty": [
+            {
+              "value": "ST",
+              "name": "siteTypeCd"
+            }
+          ]
+        },
+        "variable": {
+          "variableCode": [
+            {
+              "value": "00065",
+              "network": "NWIS",
+              "vocabulary": "NWIS:UnitValues",
+              "variableID": 45807202,
+              "default": true
+            }
+          ],
+          "variableName": "Gage height, ft",
+          "variableDescription": "Gage height, feet",
+          "valueType": "Derived Value",
+          "unit": {
+            "unitCode": "ft"
+          },
+          "options": {
+            "option": [
+              {
+                "name": "Statistic",
+                "optionCode": "00000"
+              }
+            ]
+          },
+          "note": [],
+          "noDataValue": -999999.0,
+          "variableProperty": [],
+          "oid": "45807202"
+        },
+        "values": [
+          {
+            "value": [
+              {
+                "value": "3.45",
+                "qualifiers": ["A"],
+                "dateTime": "2025-09-02T10:00:00.000-04:00"
+              },
+              {
+                "value": "3.42",
+                "qualifiers": ["A"],
+                "dateTime": "2025-09-02T10:15:00.000-04:00"
+              },
+              {
+                "value": "3.48",
+                "qualifiers": ["A"],
+                "dateTime": "2025-09-02T10:30:00.000-04:00"
+              },
+              {
+                "value": "4.11",
+                "qualifiers": ["A"],
+                "dateTime": "2025-09-02T10:45:00.000-04:00"
+              },
+              {
+                "value": "4.25",
+                "qualifiers": ["A"],
+                "dateTime": "2025-09-02T11:00:00.000-04:00"
+              }
+            ],
+            "qualifier": [
+              {
+                "qualifierCode": "A",
+                "qualifierDescription": "Approved for publication -- Processing and review completed.",
+                "qualifierID": 0,
+                "network": "NWIS",
+                "vocabulary": "uv_rmk_cd"
+              }
+            ],
+            "qualityControlLevel": [],
+            "method": [
+              {
+                "methodDescription": "",
+                "methodID": 158049
+              }
+            ],
+            "source": [],
+            "offset": [],
+            "sample": [],
+            "censorCode": []
+          }
+        ],
+        "name": "USGS:01646500:00065:00000"
+      }
+    ]
+  },
+  "nil": false,
+  "globalScope": true,
+  "typeSubstituted": false
+}

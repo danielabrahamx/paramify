@@ -1,0 +1,99 @@
+// Oracle Canister Candid Interface
+// Fetches and provides flood level data from USGS Water Services
+
+type Timestamp = nat64;
+
+type FloodData = record {
+    value: int32;
+    timestamp: Timestamp;
+    source: text;
+    site_name: text;
+    site_id: text;
+    raw_value_feet: float64;
+};
+
+type HistoricalData = record {
+    value: int32;
+    timestamp: Timestamp;
+};
+
+type OracleStatus = record {
+    is_healthy: bool;
+    last_update: opt Timestamp;
+    last_value: opt int32;
+    total_updates: nat64;
+    failed_updates: nat64;
+    success_rate: float64;
+    next_scheduled_update: opt Timestamp;
+    authorized_callers: vec principal;
+    data_source: text;
+};
+
+type UpdateResult = variant {
+    ok: FloodData;
+    err: text;
+};
+
+type Result = variant {
+    ok: text;
+    err: text;
+};
+
+type HttpHeader = record {
+    name: text;
+    value: text;
+};
+
+type HttpResponse = record {
+    status: nat;
+    headers: vec HttpHeader;
+    body: blob;
+};
+
+type TransformArgs = record {
+    response: HttpResponse;
+    context: blob;
+};
+
+service : {
+    // Data Fetching
+    fetch_flood_data: () -> (UpdateResult);
+    manual_update: () -> (UpdateResult);
+    manual_update_value: (int32) -> (UpdateResult);
+    
+    // Query Functions
+    get_latest_data: () -> (opt FloodData) query;
+    get_latest_value: () -> (opt int32) query;
+    get_historical_data: (nat) -> (vec HistoricalData) query;
+    get_value_at_timestamp: (Timestamp) -> (opt int32) query;
+    
+    // Status and Health
+    get_status: () -> (OracleStatus) query;
+    health_check: () -> (bool) query;
+    
+    // Configuration
+    set_update_interval: (nat64) -> (Result);
+    set_usgs_site: (text) -> (Result);
+    get_update_interval: () -> (nat64) query;
+    get_usgs_site: () -> (text) query;
+    
+    // Authorization
+    add_authorized_caller: (principal) -> (Result);
+    remove_authorized_caller: (principal) -> (Result);
+    is_authorized: (principal) -> (bool) query;
+    get_authorized_callers: () -> (vec principal) query;
+    
+    // Admin Functions
+    set_admin: (principal) -> (Result);
+    pause_updates: () -> (Result);
+    resume_updates: () -> (Result);
+    clear_history: () -> (Result);
+    
+    // Transform Function for HTTPS Outcalls
+    transform_response: (TransformArgs) -> (HttpResponse) query;
+    
+    // Metrics
+    get_total_updates: () -> (nat64) query;
+    get_success_rate: () -> (float64) query;
+    get_average_response_time: () -> (nat64) query;
+}

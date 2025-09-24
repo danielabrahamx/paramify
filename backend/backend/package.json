@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@dfinity/identity-secp256k1": "^3.2.4"
+  }
+}

@@ -1,0 +1,32 @@
+type Result_1 = 
+ variant {
+   err: Error;
+   ok: FloodData;
+ };
+type Result = 
+ variant {
+   err: Error;
+   ok;
+ };
+type FloodData = 
+ record {
+   level: float64;
+   stationId: text;
+   timestamp: int;
+ };
+type Error = 
+ variant {
+   InvalidData;
+   NotFound;
+   Unauthorized;
+ };
+service : {
+  clearData: () -> ();
+  getAllFloodData: () -> (vec record {
+                                text;
+                                FloodData;
+                              }) query;
+  getFloodData: (stationId: text) -> (Result_1) query;
+  setAdmin: ("principal": principal) -> ();
+  storeFloodData: (stationId: text, level: float64) -> (Result);
+}

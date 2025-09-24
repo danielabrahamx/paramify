@@ -1,0 +1,52 @@
+type Policy = record {
+  policy_id: nat64;
+  policyholder: principal;
+  premium: nat;
+  coverage: nat;
+  purchase_time: nat64;
+  active: bool;
+  paid_out: bool;
+};
+
+// Mirror type for admin dashboard storage
+type MirrorPolicy = record {
+  policy_id: nat64;
+  policyholder_eth: text;
+  premium_wei: nat;
+  coverage_wei: nat;
+  purchase_time: nat64;
+  active: bool;
+  paid_out: bool;
+};
+
+service : {
+  // Policy Management
+  "create_policy": (nat, nat) -> (variant { Ok: nat64; Err: text });
+  "get_policy": (nat64) -> (opt Policy) query;
+  "get_policy_by_holder": (principal) -> (opt Policy) query;
+  "update_policy_status": (nat64, bool, bool) -> (variant { Ok; Err: text });
+  "trigger_payout": () -> (variant { Ok: nat; Err: text });
+  "is_payout_eligible": (principal) -> (bool) query;
+  
+  // Admin Functions
+  "get_all_policies": () -> (variant { Ok: vec Policy; Err: text }) query;
+  "get_policy_stats": () -> (nat64, nat64, nat64) query;
+  "transfer_admin": (principal) -> (variant { Ok; Err: text });
+  "get_admin": () -> (principal) query;
+  
+  // Oracle Functions
+  "set_flood_level": (int64) -> (variant { Ok; Err: text });
+  "get_flood_level": () -> (int64) query;
+  "set_flood_threshold": (nat64) -> (variant { Ok; Err: text });
+  "get_flood_threshold": () -> (nat64) query;
+  "add_oracle_updater": (principal) -> (variant { Ok; Err: text });
+  "remove_oracle_updater": (principal) -> (variant { Ok; Err: text });
+  "get_oracle_updaters": () -> (variant { Ok: vec principal; Err: text }) query;
+
+  // Mirror storage APIs for admin dashboard
+  "mirror_upsert_policy": (MirrorPolicy) -> (variant { Ok; Err: text });
+  "mirror_batch_upsert_policies": (vec MirrorPolicy) -> (variant { Ok; Err: text });
+  "mirror_clear_policies": () -> (variant { Ok; Err: text });
+  "mirror_get_policies": () -> (vec MirrorPolicy) query;
+  "mirror_get_policy_stats": () -> (nat64, nat64, nat64) query;
+}

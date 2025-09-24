@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - node_modules:/workspace/node_modules
+      - target:/workspace/target
+      - dfx:/workspace/.dfx
+      - cargo:/home/vscode/.cargo
+      - vessel:/home/vscode/.vessel
+    command: sleep infinity
+    network_mode: host
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - DFX_VERSION=0.16.1
+      - VESSEL_VERSION=0.7.0
+      - IC_WASM_VERSION=0.4.0
+      - NODE_ENV=development
+
+volumes:
+  node_modules:
+  target:
+  dfx:
+  cargo:
+  vessel:

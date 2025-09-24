@@ -1,47 +1,7 @@
-# Dependencies
 node_modules/
-frontend/node_modules/
-backend/node_modules/
-
-# Build outputs
 dist/
-build/
-artifacts/
-cache/
-coverage/
-
-# Environment files
 .env
-.env.local
-.env.production
-backend/.env
-
-# Logs
-*.log
-npm-debug.log*
-
-# IDE/Editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS generated files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Hardhat
-coverage/
-coverage.json
-typechain/
-typechain-types/
-
-# Misc
-*.tgz
-*.tar.gz
-.cache/
+*.log
+.idea/
+.vscode/

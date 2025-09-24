@@ -1,0 +1,31 @@
+{
+  "replica_rev": "615045e039c57ed842c689e49a07ab3de3a8a781",
+  "effective_canister_id": "uqqxf-5h777-77774-qaaaa-cai",
+  "type": "pocket_ic",
+  "config": {
+    "http_handler": {
+      "port": null,
+      "write_port_to": null
+    },
+    "state_manager": {
+      "state_root": "/home/danie/Paramify-icp-secure/.dfx/network/local/state/replicated_state"
+    },
+    "crypto": {
+      "crypto_root": "/home/danie/Paramify-icp-secure/.dfx/network/local/state/crypto_store"
+    },
+    "artifact_pool": {
+      "consensus_pool_path": "/home/danie/Paramify-icp-secure/.dfx/network/local/state/consensus_pool"
+    },
+    "subnet_type": "system",
+    "btc_adapter": {
+      "enabled": false,
+      "socket_path": null
+    },
+    "canister_http_adapter": {
+      "enabled": true,
+      "socket_path": null
+    },
+    "log_level": "error",
+    "artificial_delay": 600
+  }
+}

@@ -1,0 +1,143 @@
+// Payments Canister Candid Interface
+// Manages ICRC-1 token payments and escrow operations
+
+type TokenAmount = nat;
+type Timestamp = int;
+type TxIndex = nat;
+type PaymentId = text;
+type EscrowId = text;
+
+type PaymentStatus = variant {
+    Pending;
+    Completed;
+    Failed;
+    Refunded;
+};
+
+type PaymentRecord = record {
+    id: PaymentId;
+    payer: principal;
+    recipient: principal;
+    amount: TokenAmount;
+    fee: TokenAmount;
+    purpose: text;
+    status: PaymentStatus;
+    timestamp: Timestamp;
+    txIndex: opt TxIndex;
+    errorMessage: opt text;
+};
+
+type EscrowStatus = variant {
+    Active;
+    Released;
+    Refunded;
+    Expired;
+};
+
+type EscrowRecord = record {
+    id: EscrowId;
+    depositor: principal;
+    beneficiary: principal;
+    amount: TokenAmount;
+    condition: text;
+    status: EscrowStatus;
+    createdAt: Timestamp;
+    releasedAt: opt Timestamp;
+    expiresAt: Timestamp;
+};
+
+type PoolStats = record {
+    totalDeposits: TokenAmount;
+    totalWithdrawals: TokenAmount;
+    totalPayouts: TokenAmount;
+    currentBalance: TokenAmount;
+    numberOfDepositors: nat;
+    lastUpdated: Timestamp;
+};
+
+type Configuration = record {
+    ledgerCanister: opt principal;
+    transferFee: TokenAmount;
+    adminCount: nat;
+    authorizedCallerCount: nat;
+};
+
+type Result = variant {
+    ok: text;
+    err: text;
+};
+
+type PaymentResult = variant {
+    ok: PaymentRecord;
+    err: text;
+};
+
+type EscrowResult = variant {
+    ok: EscrowRecord;
+    err: text;
+};
+
+type Account = record {
+    owner: principal;
+    subaccount: opt blob;
+};
+
+type TransferArg = record {
+    from_subaccount: opt blob;
+    to: Account;
+    amount: nat;
+    fee: opt nat;
+    memo: opt blob;
+    created_at_time: opt nat64;
+};
+
+service : {
+    // Configuration
+    setLedgerCanister: (principal) -> (Result);
+    setTransferFee: (TokenAmount) -> (Result);
+    getConfiguration: () -> (Configuration) query;
+    
+    // Access Control
+    addAdmin: (principal) -> (Result);
+    removeAdmin: (principal) -> (Result);
+    addAuthorizedCaller: (principal) -> (Result);
+    removeAuthorizedCaller: (principal) -> (Result);
+    
+    // Pool Management
+    depositToPool: (TokenAmount) -> (Result);
+    withdrawFromPool: (TokenAmount) -> (Result);
+    getPoolBalance: () -> (TokenAmount) query;
+    getPoolStats: () -> (PoolStats) query;
+    
+    // Payment Processing
+    processPayout: (principal, TokenAmount, text) -> (PaymentResult);
+    processMultiplePayouts: (vec record { recipient: principal; amount: TokenAmount; purpose: text }) -> (vec PaymentResult);
+    refundPayment: (PaymentId) -> (Result);
+    
+    // Escrow Operations
+    createEscrow: (principal, TokenAmount, text, nat) -> (EscrowResult);
+    releaseEscrow: (EscrowId) -> (Result);
+    refundEscrow: (EscrowId) -> (Result);
+    checkEscrowExpiry: () -> (Result);
+    
+    // Query Functions
+    getPayment: (PaymentId) -> (opt PaymentRecord) query;
+    getEscrow: (EscrowId) -> (opt EscrowRecord) query;
+    getRecentPayments: (nat) -> (vec PaymentRecord) query;
+    getActiveEscrows: () -> (vec EscrowRecord) query;
+    getPaymentsByRecipient: (principal) -> (vec PaymentRecord) query;
+    getEscrowsByDepositor: (principal) -> (vec EscrowRecord) query;
+    
+    // Depositor Management
+    getDepositorBalance: (principal) -> (TokenAmount) query;
+    getTopDepositors: (nat) -> (vec record { depositor: principal; balance: TokenAmount }) query;
+    
+    // System Functions
+    getCanisterStatus: () -> (record { cycles: nat; memory_size: nat; module_hash: opt blob }) query;
+    emergencyPause: () -> (Result);
+    emergencyResume: () -> (Result);
+    
+    // ICRC-1 Integration
+    transferTokens: (TransferArg) -> (variant { Ok: nat; Err: text });
+    getAccountBalance: (Account) -> (nat) query;
+}

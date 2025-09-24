@@ -1,0 +1,108 @@
+// Insurance Canister Candid Interface
+// Manages flood insurance policies and payouts
+
+type PolicyId = text;
+type TokenAmount = nat;
+type Timestamp = int;
+
+type Policy = record {
+    id: PolicyId;
+    customer: principal;
+    coverage_amount: TokenAmount;
+    premium_amount: TokenAmount;
+    purchase_date: Timestamp;
+    expiry_date: Timestamp;
+    status: PolicyStatus;
+    flood_threshold: float64;
+    last_payout_check: opt Timestamp;
+    total_payouts: TokenAmount;
+};
+
+type PolicyStatus = variant {
+    Active;
+    Expired;
+    PaidOut;
+    Cancelled;
+};
+
+type PolicyRequest = record {
+    coverage_amount: TokenAmount;
+};
+
+type InsuranceConfig = record {
+    oracle_canister: principal;
+    payments_canister: principal;
+    token_canister: principal;
+    default_threshold: float64;
+    premium_percentage: nat;
+};
+
+type SystemStatus = record {
+    total_policies: nat;
+    active_policies: nat;
+    total_premiums_collected: TokenAmount;
+    total_payouts_made: TokenAmount;
+    pool_balance: TokenAmount;
+    last_oracle_update: opt Timestamp;
+    current_flood_level: opt float64;
+    configuration: InsuranceConfig;
+};
+
+type Result = variant {
+    ok: text;
+    err: text;
+};
+
+type PolicyResult = variant {
+    ok: Policy;
+    err: text;
+};
+
+type PayoutEligibility = record {
+    eligible: bool;
+    current_flood_level: float64;
+    threshold: float64;
+    policy_status: PolicyStatus;
+    reason: opt text;
+};
+
+service : {
+    // Initialization
+    initialize: (InsuranceConfig) -> (Result);
+    
+    // Policy Management
+    purchase_policy: (PolicyRequest) -> (PolicyResult);
+    cancel_policy: () -> (Result);
+    renew_policy: () -> (PolicyResult);
+    
+    // Payout Operations
+    check_payout_eligibility: (principal) -> (PayoutEligibility) query;
+    claim_payout: () -> (Result);
+    process_automatic_payouts: () -> (Result);
+    
+    // Query Functions
+    get_policy: (principal) -> (opt Policy) query;
+    get_policy_by_id: (PolicyId) -> (opt Policy) query;
+    get_all_active_policies: () -> (vec Policy) query;
+    get_customer_policies: (principal) -> (vec Policy) query;
+    get_expired_policies: (nat) -> (vec Policy) query;
+    
+    // System Functions
+    get_system_status: () -> (SystemStatus) query;
+    update_threshold: (float64) -> (Result);
+    update_premium_percentage: (nat) -> (Result);
+    set_oracle_canister: (principal) -> (Result);
+    set_payments_canister: (principal) -> (Result);
+    
+    // Admin Functions
+    add_admin: (principal) -> (Result);
+    remove_admin: (principal) -> (Result);
+    is_admin: (principal) -> (bool) query;
+    emergency_pause: () -> (Result);
+    emergency_resume: () -> (Result);
+    
+    // Metrics
+    get_total_premiums: () -> (TokenAmount) query;
+    get_total_payouts: () -> (TokenAmount) query;
+    get_policy_count: () -> (nat) query;
+}

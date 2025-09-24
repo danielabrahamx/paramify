@@ -1,0 +1,145 @@
+{
+  "name": "Paramify ICP Development",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true,
+      "upgradePackages": true,
+      "username": "vscode",
+      "userUid": "1000",
+      "userGid": "1000"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest",
+      "ppa": false
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20",
+      "nodeGypDependencies": true,
+      "nvmVersion": "0.39.0"
+    },
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "stable",
+      "targets": "wasm32-unknown-unknown",
+      "profile": "default"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": true
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dfinity-foundation.vscode-motoko",
+        "rust-lang.rust-analyzer",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "tamasfe.even-better-toml",
+        "ms-vscode.vscode-typescript-next",
+        "bradlc.vscode-tailwindcss",
+        "GitHub.copilot",
+        "eamodio.gitlens",
+        "usernamehw.errorlens",
+        "streetsidesoftware.code-spell-checker",
+        "wayou.vscode-todo-highlight",
+        "gruntfuggly.todo-tree",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml",
+        "zxh404.vscode-proto3",
+        "yzhang.markdown-all-in-one"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/bin/zsh"
+          }
+        },
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": true
+        },
+        "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
+        "rust-analyzer.checkOnSave.command": "clippy",
+        "files.associations": {
+          "*.did": "candid",
+          "*.mo": "motoko"
+        },
+        "files.exclude": {
+          "**/.git": true,
+          "**/.dfx": false,
+          "**/node_modules": true,
+          "**/target": false
+        },
+        "search.exclude": {
+          "**/node_modules": true,
+          "**/target": true,
+          "**/.dfx": true
+        },
+        "[motoko]": {
+          "editor.defaultFormatter": "dfinity-foundation.vscode-motoko"
+        },
+        "[rust]": {
+          "editor.defaultFormatter": "rust-lang.rust-analyzer"
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        }
+      }
+    }
+  },
+
+  "postCreateCommand": "/workspace/.devcontainer/post-create.sh",
+  "postStartCommand": "/workspace/.devcontainer/post-start.sh",
+  
+  "remoteUser": "vscode",
+  
+  "mounts": [
+    "source=${localWorkspaceFolderBasename}-node_modules,target=/workspace/node_modules,type=volume",
+    "source=${localWorkspaceFolderBasename}-target,target=/workspace/target,type=volume",
+    "source=${localWorkspaceFolderBasename}-dfx,target=/workspace/.dfx,type=volume",
+    "source=${localWorkspaceFolderBasename}-cargo,target=/home/vscode/.cargo,type=volume"
+  ],
+
+  "forwardPorts": [4943, 3000, 3001, 8080, 8000],
+  
+  "portsAttributes": {
+    "4943": {
+      "label": "DFX Local Replica",
+      "onAutoForward": "notify"
+    },
+    "3000": {
+      "label": "Frontend Dev Server",
+      "onAutoForward": "openBrowser"
+    },
+    "3001": {
+      "label": "Backend API",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Candid UI",
+      "onAutoForward": "openBrowser"
+    },
+    "8000": {
+      "label": "Documentation Server",
+      "onAutoForward": "notify"
+    }
+  },
+
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  }
+}

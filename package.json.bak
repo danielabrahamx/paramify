@@ -1,0 +1,108 @@
+{
+  "name": "paramify-icp",
+  "version": "2.0.0",
+  "description": "Decentralized flood insurance platform on Internet Computer",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "scripts"
+  ],
+  "scripts": {
+    "setup": "npm install && npm run setup:dfx && npm run setup:rust",
+    "setup:dfx": "sh -ci \"$(curl -fsSL https://sdk.dfinity.org/install.sh)\"",
+    "setup:rust": "rustup target add wasm32-unknown-unknown && cargo install ic-wasm",
+    "build": "npm run build:canisters && npm run build:frontend",
+    "build:canisters": "dfx build",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:insurance": "dfx build insurance",
+    "build:oracle": "dfx build oracle",
+    "build:payments": "dfx build payments",
+    "deploy": "npm run deploy:local",
+    "deploy:local": "dfx deploy --network local",
+    "deploy:ic": "dfx deploy --network ic",
+    "start": "npm run start:replica",
+    "start:replica": "dfx start --clean --background",
+    "stop": "dfx stop",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "npm run test:motoko && npm run test:rust",
+    "test:motoko": "$(vessel bin)/moc -r $(vessel sources) -wasi-system-api src/canisters/**/*.test.mo",
+    "test:rust": "cargo test --all",
+    "test:integration": "npm run test:integration --workspace=scripts",
+    "test:e2e": "npm run test:e2e --workspace=frontend",
+    "clean": "npm run clean:dfx && npm run clean:build",
+    "clean:dfx": "rm -rf .dfx",
+    "clean:build": "rm -rf target node_modules frontend/node_modules frontend/dist",
+    "reset": "npm run clean && dfx start --clean --background",
+    "generate": "dfx generate",
+    "identity:new": "dfx identity new --storage-mode=plaintext",
+    "identity:use": "dfx identity use",
+    "identity:list": "dfx identity list",
+    "ledger:balance": "dfx canister call icrc1_ledger icrc1_balance_of '(record {owner = principal \"'$(dfx identity get-principal)'\"})'",
+    "ledger:transfer": "node scripts/transfer-tokens.js",
+    "oracle:update": "dfx canister call oracle manual_update",
+    "oracle:status": "dfx canister call oracle get_status",
+    "insurance:status": "dfx canister call insurance get_system_status",
+    "dev": "npm run start:replica && npm run deploy:local && npm run dev:frontend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "verify": "./scripts/verify-dev-env.sh",
+    "format": "npm run format:motoko && npm run format:rust && npm run format:js",
+    "format:motoko": "mo-fmt src/canisters/**/*.mo",
+    "format:rust": "cargo fmt --all",
+    "format:js": "prettier --write \"frontend/**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "lint": "npm run lint:rust && npm run lint:js",
+    "lint:rust": "cargo clippy --all -- -D warnings",
+    "lint:js": "npm run lint --workspace=frontend",
+    "precommit": "npm run format && npm run lint && npm run test:unit",
+    "docs": "npm run docs:generate && npm run docs:serve",
+    "docs:generate": "mo-doc src/canisters/**/*.mo && cargo doc --no-deps",
+    "docs:serve": "python3 -m http.server 8080 --directory docs/api"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "@dfinity/agent": "^1.1.0",
+    "@dfinity/principal": "^1.1.0",
+    "@dfinity/candid": "^1.1.0",
+    "@dfinity/identity": "^1.1.0",
+    "@dfinity/auth-client": "^1.1.0",
+    "prettier": "^3.2.4",
+    "husky": "^9.0.10",
+    "lint-staged": "^15.2.1",
+    "vessel": "^0.7.0",
+    "mo-fmt": "^0.2.0",
+    "mo-doc": "^0.2.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.1",
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.1",
+    "inquirer": "^9.2.14"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielabrahamx/Paramify.git"
+  },
+  "keywords": [
+    "blockchain",
+    "insurance",
+    "parametric",
+    "flood",
+    "icp",
+    "internet-computer",
+    "web3",
+    "defi"
+  ],
+  "author": "Paramify Development Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/danielabrahamx/Paramify/issues"
+  },
+  "homepage": "https://github.com/danielabrahamx/Paramify#readme",
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,css,md}": "prettier --write",
+    "*.mo": "mo-fmt",
+    "*.rs": "cargo fmt --"
+  }

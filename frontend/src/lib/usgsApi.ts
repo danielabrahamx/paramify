@@ -1,110 +1,86 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:3001/api';
-
-export interface FloodData {
-  value: number | null;
-  timestamp: string | null;
-  lastUpdate: string | null;
-  status: string;
-  error: string | null;
-  source: string;
-  siteInfo: {
-    name: string;
-    siteId: string;
-  };
+export interface USGSData {
+  currentFloodLevel: number;
+  threshold: number;
+  lastUpdate: string;
+  siteName: string;
+  siteId: string;
+  nextUpdate: string;
 }
 
 export interface ServiceStatus {
-  service: string;
-  lastUpdate: string | null;
   currentFloodLevel: number | null;
   oracleValue: number | null;
-  dataSource: string;
+  threshold: {
+    thresholdFeet: number;
+    thresholdUnits: number;
+  } | null;
+  lastUpdate: string;
+  nextUpdate: string;
   site: {
     name: string;
     siteId: string;
   };
-  updateInterval: string;
-  nextUpdate: string | null;
-  threshold?: {
-    thresholdFeet: number;
-    thresholdUnits: number;
-  };
 }
 
-export const usgsApi = {
-  async getFloodData(): Promise<FloodData> {
-    try {
-      const response = await axios.get<FloodData>(`${API_BASE_URL}/flood-data`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching flood data:', error);
-      throw error;
+class USGSApi {
+  private baseUrl = "http://localhost:3001";
+
+  async getFloodData(): Promise<USGSData> {
+    const response = await fetch(`${this.baseUrl}/flood-data`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch flood data");
     }
-  },
+    return response.json();
+  }
 
   async getStatus(): Promise<ServiceStatus> {
-    try {
-      const response = await axios.get<ServiceStatus>(`${API_BASE_URL}/status`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching service status:', error);
-      throw error;
+    const response = await fetch(`${this.baseUrl}/status`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch service status");
     }
-  },
+    return response.json();
+  }
 
-  async triggerManualUpdate(): Promise<{ success: boolean; message: string; data: FloodData }> {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/manual-update`);
-      return response.data;
-    } catch (error) {
-      console.error('Error triggering manual update:', error);
-      throw error;
+  async triggerUpdate(): Promise<{ success: boolean }> {
+    const response = await fetch(`${this.baseUrl}/update`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      throw new Error("Failed to trigger update");
     }
-  },
+    return response.json();
+  }
 
-  async checkHealth(): Promise<{ status: string; message: string; timestamp: string }> {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/health`);
-      return response.data;
-    } catch (error) {
-      console.error('Error checking API health:', error);
-      throw error;
+  async updateThreshold(thresholdFeet: number): Promise<{ success: boolean; thresholdFeet: number; thresholdUnits: number }> {
+    const response = await fetch(`${this.baseUrl}/api/threshold`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ thresholdFeet }),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to update threshold");
     }
-  },
-};
-
-// Helper function to format the timestamp
-export function formatTimestamp(timestamp: string | null): string {
-  if (!timestamp) return 'N/A';
-  
-  const date = new Date(timestamp);
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
+    return response.json();
+  }
 }
 
-// Helper function to format the next update time
-export function getTimeUntilNextUpdate(nextUpdate: string | null): string {
-  if (!nextUpdate) return 'N/A';
+export const usgsApi = new USGSApi();
+
+export function formatTimestamp(timestamp: string): string {
+  return new Date(timestamp).toLocaleString();
+}
+
+export function getTimeUntilNextUpdate(nextUpdate: string): string {
+  const now = new Date().getTime();
+  const next = new Date(nextUpdate).getTime();
+  const diff = next - now;
   
-  const now = new Date();
-  const next = new Date(nextUpdate);
-  const diffMs = next.getTime() - now.getTime();
+  if (diff <= 0) return "Updating...";
   
-  if (diffMs < 0) return 'Updating...';
+  const minutes = Math.floor(diff / 60000);
+  const seconds = Math.floor((diff % 60000) / 1000);
   
-  const minutes = Math.floor(diffMs / 60000);
-  const seconds = Math.floor((diffMs % 60000) / 1000);
-  
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  }
-  return `${seconds}s`;
+  return `${minutes}m ${seconds}s`;
 }
