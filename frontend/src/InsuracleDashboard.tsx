@@ -1,30 +1,39 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { Waves, Shield, TrendingUp, Wallet, Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft, Activity } from 'lucide-react';
+import { Zap, Shield, TrendingUp, Wallet, Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft, Activity, Play, Pause, Square } from 'lucide-react';
 import { PARAMIFY_ADDRESS, PARAMIFY_ABI } from './lib/contract';
-import { usgsApi, formatTimestamp, getTimeUntilNextUpdate, type ServiceStatus } from './lib/usgsApi';
 
 interface InsuracleDashboardProps {
   setUserType?: (userType: string | null) => void;
 }
 
+interface OutageData {
+  outageDuration: number;
+  timestamp: string;
+  lastUpdate: string;
+  status: string;
+  error: string | null;
+  source: string;
+}
+
 export default function InsuracleDashboard({ setUserType }: InsuracleDashboardProps) {
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [ethBalance, setEthBalance] = useState<number>(0);
-  const [floodLevel, setFloodLevel] = useState<number>(0);
-  const [threshold, setThreshold] = useState<number>(1200000000000); // 12 feet default
-  const [thresholdInFeet, setThresholdInFeet] = useState<number>(12);
-  const [policyAmount, setPolicyAmount] = useState<number>(1);
-  const [premium, setPremium] = useState<number>(0.1);
-  const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
+  const [outageDuration, setOutageDuration] = useState<number>(0);
+  const [payoutRatePerMinute, setPayoutRatePerMinute] = useState<number>(120); // £120 per minute default
+  const [premium, setPremium] = useState<number>(240); // Monthly premium = payoutRatePerMinute * 2
   const [contractBalance, setContractBalance] = useState<number>(0);
   const [transactionStatus, setTransactionStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasActivePolicy, setHasActivePolicy] = useState(false);
   const [networkError, setNetworkError] = useState(false);
-  const [serviceStatus, setServiceStatus] = useState<ServiceStatus | null>(null);
+  const [outageData, setOutageData] = useState<OutageData | null>(null);
   const [isBackendConnected, setIsBackendConnected] = useState(false);
-  const [nextUpdateCountdown, setNextUpdateCountdown] = useState<string>('');
+
+  // Stopwatch state
+  const [stopwatchRunning, setStopwatchRunning] = useState(false);
+  const [stopwatchTime, setStopwatchTime] = useState(0);
+  const [stopwatchInterval, setStopwatchInterval] = useState<NodeJS.Timeout | null>(null);
 
   // Connect wallet and fetch initial data
   useEffect(() => {
@@ -310,16 +319,16 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
             </button>
             <div className="flex items-center justify-center">
               <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full shadow-lg">
-                <Waves className="h-8 w-8 text-white" />
+                <Zap className="h-8 w-8 text-white" />
               </div>
             </div>
             <div className="w-24"></div> 
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">
-            Paramify: Flood Insurance Oracle
+            Paramify: Power Outage Insurance Oracle
           </h1>
           <p className="text-gray-300 text-lg">
-            Buy flood insurance and claim payouts if flood levels exceed the threshold.
+            Buy power outage insurance and claim payouts when outages occur. Use the stopwatch to simulate and record outages.
           </p>
         </div>
 

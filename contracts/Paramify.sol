@@ -12,14 +12,13 @@ contract Paramify is AccessControl {
     uint256 public insuranceAmount;
     bool public isInitialized;
     
-    // Dynamic flood threshold with 12 feet default (12 * 100000000000 = 1200000000000)
-    uint256 public floodThreshold = 1200000000000;
     address public owner;
 
     struct Policy {
         address customer;
         uint256 premium; // Paid in wei
         uint256 coverage; // Payout amount in wei
+        uint256 payoutRatePerSecond; // Payout rate per second in wei
         bool active;
         bool paidOut;
     }
@@ -29,7 +28,7 @@ contract Paramify is AccessControl {
     // Events
     event InsurancePurchased(address indexed customer, uint256 premium, uint256 coverage);
     event PayoutTriggered(address indexed customer, uint256 amount);
-    event ThresholdChanged(uint256 oldThreshold, uint256 newThreshold);
+    event PayoutRateSet(address indexed user, uint256 payoutRatePerMinute);
     event OracleAddressUpdated(address indexed oldOracle, address indexed newOracle);
 
     modifier onlyOwner() {
@@ -62,41 +61,27 @@ contract Paramify is AccessControl {
         emit OracleAddressUpdated(oldOracle, _oracleAddress);
     }
 
-    // Threshold management functions
-    function setThreshold(uint256 _newThreshold) external onlyOwner {
-        require(_newThreshold > 0, "Threshold must be positive");
-        require(_newThreshold <= 10000000000000, "Threshold too high"); // Max 100 feet
-        uint256 oldThreshold = floodThreshold;
-        floodThreshold = _newThreshold;
-        emit ThresholdChanged(oldThreshold, _newThreshold);
-    }
 
-    function getCurrentThreshold() external view returns (uint256) {
-        return floodThreshold;
-    }
-
-    function getThresholdInFeet() external view returns (uint256) {
-        // Convert contract units back to feet (divide by 100000000000)
-        return floodThreshold / 100000000000;
-    }
-
-    function buyInsurance(uint256 _coverage) external payable {
+    function buyInsurance(uint256 _payoutRatePerMinute) external payable {
         require(msg.value > 0, "Premium must be greater than 0");
-        require(_coverage > 0, "Coverage must be greater than 0");
+        require(_payoutRatePerMinute > 0, "Payout rate must be greater than 0");
         require(!policies[msg.sender].active, "Policy already active");
 
-        uint256 requiredPremium = _coverage / 10;
+        uint256 payoutRatePerSecond = _payoutRatePerMinute / 60;
+        uint256 requiredPremium = _payoutRatePerMinute * 2;
         require(msg.value >= requiredPremium, "Insufficient premium");
 
         policies[msg.sender] = Policy({
             customer: msg.sender,
             premium: msg.value,
-            coverage: _coverage,
+            coverage: 0, // Will be calculated based on duration
+            payoutRatePerSecond: payoutRatePerSecond,
             active: true,
             paidOut: false
         });
 
-        emit InsurancePurchased(msg.sender, msg.value, _coverage);
+        emit InsurancePurchased(msg.sender, msg.value, 0);
+        emit PayoutRateSet(msg.sender, _payoutRatePerMinute);
     }
 
     function triggerPayout() external {
@@ -104,16 +89,17 @@ contract Paramify is AccessControl {
         require(policy.active, "No active policy");
         require(!policy.paidOut, "Payout already issued");
 
-        int256 floodLevel = getLatestPrice();
-        require(uint256(floodLevel) >= floodThreshold, "Flood level below threshold");
+        int256 outageDuration = getLatestPrice();
+        require(uint256(outageDuration) > 0, "No outage recorded");
 
         policy.paidOut = true;
         policy.active = false;
 
-        (bool sent, ) = msg.sender.call{value: policy.coverage}("");
+        uint256 payoutAmount = uint256(outageDuration) * policy.payoutRatePerSecond;
+        (bool sent, ) = msg.sender.call{value: payoutAmount}("");
         require(sent, "Payout failed");
 
-        emit PayoutTriggered(msg.sender, policy.coverage);
+        emit PayoutTriggered(msg.sender, payoutAmount);
     }
 
     // Check if payout conditions are met
@@ -122,8 +108,13 @@ contract Paramify is AccessControl {
         if (!policy.active || policy.paidOut) {
             return false;
         }
-        int256 floodLevel = getLatestPrice();
-        return uint256(floodLevel) >= floodThreshold;
+        int256 outageDuration = getLatestPrice();
+        return uint256(outageDuration) > 0;
+    }
+
+    // Get latest outage duration from oracle
+    function getLatestOutageDuration() external view returns (int256) {
+        return getLatestPrice();
     }
 
     function withdraw() external onlyRole(DEFAULT_ADMIN_ROLE) {

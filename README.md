@@ -1,22 +1,21 @@
-# Paramify: Decentralized Flood Insurance Proof of Concept
+# Paramify: Decentralized Power Outage Insurance for European Defense Hackathon
 
 ![alt text](image.png)
 
-
 ## Overview
 
-**Paramify** is a proof of concept (PoC) for a decentralized flood insurance platform, demonstrating automated insurance purchases and payouts triggered by flood level data from a compatible oracle. This PoC showcases a smart contract (`Paramify.sol`) that allows users to buy flood insurance policies and claim payouts when flood levels exceed a predefined threshold, with role-based access control for secure administration.
+**Paramify** is a proof of concept (PoC) for a decentralized power outage insurance platform, adapted for the European Defense Hackathon. This MVP demonstrates automated insurance purchases and payouts triggered by power outage duration data from a compatible oracle. The smart contract (`Paramify.sol`) allows users to buy power outage insurance policies and claim payouts when outages occur, with role-based access control for secure administration.
 
-Paramify highlights the potential for decentralized insurance applications. The architecture is adaptable to Avalanche C-Chain or other EVM-compatible networks. This README provides instructions to set up, deploy, and demo the PoC locally, along with steps to test key features.
+This version is specifically adapted for power outage insurance scenarios, featuring a manual stopwatch integration for simulating and recording outage durations. The system provides a streamlined approach to parametric insurance where users can simulate outages using the built-in stopwatch feature.
 
-### Features
-- **Insurance Purchase**: Users buy policies by paying a premium (10% of coverage), e.g., 0.1 ETH for 1 ETH coverage.
-- **Automated Payouts**: Payouts are triggered when the flood level exceeds 3 feet, sending coverage (e.g., 1 ETH) to the policyholder.
-- **Real-Time Flood Data**: Backend server fetches live USGS water level data every 5 minutes and updates the blockchain oracle.
-- **Role-Based Access**: Admins manage the contract, oracle updaters set flood levels, and insurance admins configure parameters.
-- **Frontend Interface**: A React-based UI allows users to connect wallets, buy insurance, view flood levels, and trigger payouts.
-- **Backend API**: Node.js server provides real-time flood data integration with automatic oracle updates.
-
+### Key Features
+- **Power Outage Insurance**: Users buy policies by setting a desired payout rate per minute (e.g., £120/minute).
+- **Monthly Premium Calculation**: Premium = payout rate per minute × 2 (e.g., £240 monthly premium for £120/minute rate).
+- **Automated Payouts**: Payouts are triggered when outage duration > 0 seconds, calculated as: `payout = duration_seconds × payout_rate_per_second`.
+- **Manual Stopwatch Integration**: Frontend stopwatch allows users to simulate and record outage durations.
+- **Real-Time Outage Tracking**: Backend API accepts outage duration data from stopwatch and updates blockchain oracle on-demand.
+- **Role-Based Access**: Admins manage the contract, oracle updaters set outage data, and insurance admins configure parameters.
+- **Modern Frontend**: React-based UI with stopwatch functionality for power outage simulation.
 
 
 ## Prerequisites
@@ -177,36 +176,49 @@ npm run dev
 
 **Note:** For both environments, always update the contract addresses in `frontend/src/lib/contract.ts` and `backend/.env` after redeployment. The backend server provides real-time flood data updates that you can monitor in the terminal output.
 
-## Live Flood Data Monitoring
+## Power Outage Monitoring System
 
-The Paramify system now includes real-time flood level monitoring:
+The Paramify system now includes on-demand power outage monitoring:
 
-- **Backend Terminal**: Shows timestamped flood level updates every 5 minutes (e.g., "Latest water level: 4.11 ft at 2025-06-25T04:45:00.000-04:00")
-- **Frontend Dashboard**: Displays current flood levels in feet with automatic updates
-- **API Endpoint**: Access flood data at `http://localhost:3001/api/flood-data`
-- **Blockchain Oracle**: Automatically updated with scaled flood values for smart contract integration
+- **Stopwatch Integration**: Manual stopwatch in frontend for simulating and recording outage durations
+- **Backend API**: Accepts outage duration data via POST requests to `/api/outage`
+- **Frontend Dashboard**: Real-time display of current outage status and duration
+- **API Endpoint**: Access outage data at `http://localhost:3001/api/outage-data`
+- **Blockchain Oracle**: Updated on-demand with outage duration values for smart contract integration
+
+### Example Usage
+```javascript
+// Submit outage duration from frontend stopwatch
+const response = await fetch('/api/outage', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ outageDuration: 300 }) // 5 minutes in seconds
+});
+```
 
 ## Demo Instructions
 
-### 1. Buy Insurance
+### 1. Buy Power Outage Insurance
 - Connect MetaMask as the customer (`0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199`).
-- In the UI, enter `1` in “Coverage amount (ETH)” (premium: 0.1 ETH).
-- Click “Buy Insurance” and confirm in MetaMask.
-- Verify: Premium: 0.1 ETH, Coverage: 1 ETH, Status: Active.
+- In the UI, enter desired payout rate per minute (e.g., `120` for £120/minute).
+- Monthly premium will automatically calculate as: `payout rate × 2 = £240`.
+- Click "Buy Insurance" and confirm in MetaMask.
+- Verify: Premium: 240 ETH (in testnet), Payout Rate: 120/minute, Status: Active.
 
-### 2. Set Flood Level
-- Connect as the deployer (`0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`).
-- Enter `3001` in “New flood level” (threshold: 3000).
-- Click “Update Flood Level” and confirm.
-- Verify: Flood level is 3001.0 units.
+### 2. Simulate Power Outage with Stopwatch
+- Use the stopwatch feature in the UI to simulate an outage.
+- Click "Start" to begin timing, "Stop" to end timing.
+- Enter the duration (e.g., 300 seconds for 5 minutes).
+- Click "Submit Outage" to send duration to backend oracle.
 
 ### 3. Trigger Payout
 - Connect as the customer.
-- Click “Trigger Payout” and confirm.
+- The system will automatically detect when outage duration > 0.
+- Click "Claim Insurance Payout" and confirm.
 - Verify:
   - Status: Paid Out.
-  - Customer balance increases by 1 ETH (check “Your Balance” or MetaMask).
-  - Contract balance decreases to ~1.1 ETH.
+  - Customer balance increases by calculated payout amount.
+  - Payout = outage_duration_seconds × (payout_rate_per_minute / 60).
 
 ### 4. Edge Cases
 - **Low Flood Level**: Set flood level to 2000 and try payout (fails: “Flood level below threshold”).
@@ -292,14 +304,32 @@ paramify/
   ```
   - Address any high-severity issues before deployment.
 
+## Premium Calculation & Payout System
+
+### Premium Formula
+- **Monthly Premium** = Payout Rate Per Minute × 2
+- **Example**: For £120/minute payout rate → Monthly Premium = £240
+
+### Payout Formula
+- **Payout Amount** = Outage Duration (seconds) × Payout Rate Per Second
+- **Payout Rate Per Second** = Payout Rate Per Minute ÷ 60
+- **Example**: 300 seconds outage × (£120/60) = £600 payout
+
+### Complete Example
+1. User sets payout rate of £120/minute
+2. Monthly premium = £120 × 2 = £240
+3. User simulates 5-minute (300 seconds) outage with stopwatch
+4. Payout = 300 × (£120/60) = 300 × £2 = £600
+
 ## Future Enhancements
 
 - **Avalanche Integration**:
   - Deploy on Avalanche C-Chain for EVM compatibility.
   - Integrate with Avalanche-native oracles for real-world data.
-- **Real Oracle Data**: Replace `MockV3Aggregator` with Chainlink’s flood level data feed.
+- **Real Oracle Data**: Replace `MockV3Aggregator` with Chainlink's power outage data feeds.
 - **Multi-Policy Support**: Allow users to hold multiple policies.
 - **Frontend Polish**: Add a custom logo, improve UX, and support mobile views.
+- **IoT Integration**: Connect with smart meters and IoT devices for automatic outage detection.
 
 
 ## Troubleshooting
@@ -325,4 +355,4 @@ MIT License. See [LICENSE](./LICENSE) for details.
 
 ---
 
-*Presented as a proof of concept for the Avalanche Summit Hackathon, May 2025.*
+*Adapted for the European Defense Hackathon - Power Outage Insurance MVP featuring manual stopwatch integration for outage simulation and duration-based parametric insurance payouts.*

@@ -118,7 +118,7 @@ const Index = () => {
 
         <div className="text-center mb-12">
           <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-            The world's first decentralized flood insurance oracle. Providing real-time flood risk assessment 
+            The world's first decentralized power outage insurance oracle. Providing real-time outage monitoring
             and automated insurance claims processing through blockchain technology.
           </p>
         </div>
@@ -158,7 +158,7 @@ const Index = () => {
               </div>
               <CardTitle className="text-2xl text-white">For Individuals</CardTitle>
               <CardDescription className="text-white/80">
-                Protect your property with personalized flood insurance coverage
+                Protect your property with personalized power outage insurance coverage
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -202,7 +202,7 @@ const Index = () => {
 
 
         <div className="text-center mt-16 text-white/60">
-          <p>&copy; 2025 Paramify. Revolutionizing flood insurance through blockchain technology.</p>
+          <p>&copy; 2025 Paramify. Revolutionizing power outage insurance through blockchain technology.</p>
         </div>
       </div>
     </div>

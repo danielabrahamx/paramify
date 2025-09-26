@@ -1,8 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const axios = require('axios');
 const { ethers } = require('ethers');
-const cron = require('node-cron');
 require('dotenv').config();
 
 const app = express();
@@ -98,27 +96,28 @@ const MOCK_ORACLE_ABI = [
   }
 ];
 
-// USGS API configuration
-const USGS_SITE_ID = '01646500'; // Potomac River Near Wash, DC Little Falls Pump Sta
-const USGS_PARAMETER_CODE = '00065'; // Gage height in feet
-const USGS_API_URL = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${USGS_SITE_ID}&parameterCd=${USGS_PARAMETER_CODE}&siteStatus=all`;
+// Mock outage data storage
+let mockOutageData = {
+  outageDuration: 0,
+  timestamp: null,
+  lastUpdate: null,
+  status: 'ready',
+  error: null,
+  source: 'Mock Outage API'
+};
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Global variables to store latest data
-let latestFloodData = {
-  value: null,
+let latestOutageData = {
+  outageDuration: 0,
   timestamp: null,
   lastUpdate: null,
-  status: 'initializing',
+  status: 'ready',
   error: null,
-  source: 'USGS Water Data',
-  siteInfo: {
-    name: 'Potomac River Near Wash, DC Little Falls Pump Sta',
-    siteId: USGS_SITE_ID
-  }
+  source: 'Mock Outage API'
 };
 
 // Initialize Ethereum provider and signer
@@ -158,116 +157,91 @@ async function initializeEthers() {
   }
 }
 
-// Function to fetch USGS data
-async function fetchUSGSData() {
-  try {
-    console.log('🌊 Fetching USGS water level data...');
-    
-    const response = await axios.get(USGS_API_URL);
-    const data = response.data;
-    
-    // Parse the nested JSON structure
-    const timeSeries = data.value.timeSeries[0];
-    const latestValue = timeSeries.values[0].value[0];
-    
-    // Extract the water level value (in feet)
-    const waterLevelFeet = parseFloat(latestValue.value);
-    const timestamp = latestValue.dateTime;
-    
-    console.log(`📊 Latest water level: ${waterLevelFeet} ft at ${timestamp}`);
-    
-    // Update global data
-    latestFloodData = {
-      value: waterLevelFeet,
-      timestamp: timestamp,
-      lastUpdate: new Date().toISOString(),
-      status: 'active',
-      error: null,
-      source: 'USGS Water Data',
-      siteInfo: {
-        name: timeSeries.sourceInfo.siteName,
-        siteId: USGS_SITE_ID
-      }
-    };
-    
-    return waterLevelFeet;
-  } catch (error) {
-    console.error('❌ Error fetching USGS data:', error.message);
-    latestFloodData.status = 'error';
-    latestFloodData.error = error.message;
-    throw error;
-  }
+// Function to handle mock outage data
+function handleMockOutageData(outageDuration) {
+  console.log('⚡ Processing outage duration:', outageDuration, 'seconds');
+
+  // Update global data
+  latestOutageData = {
+    outageDuration: outageDuration,
+    timestamp: new Date().toISOString(),
+    lastUpdate: new Date().toISOString(),
+    status: 'active',
+    error: null,
+    source: 'Mock Outage API'
+  };
+
+  return outageDuration;
 }
 
-// Function to update the oracle contract
-async function updateOracleContract(waterLevel) {
+// Function to update the oracle contract with outage duration
+async function updateOracleContract(outageDuration) {
   try {
     // Check if we have a valid contract connection
     if (!mockOracleContract || !signer) {
       console.log('🔄 Attempting to reconnect to blockchain...');
       await initializeEthers();
-      
+
       if (!mockOracleContract) {
         throw new Error('Could not establish blockchain connection');
       }
     }
-    
-    // Convert water level to the format expected by the contract
-    // Backend scales data: feet * 100000000000 = contract units
-    const scaledValue = Math.floor(waterLevel * 100000000000);
-    
-    console.log(`🔄 Updating oracle with scaled value: ${scaledValue} (${waterLevel} feet)`);
-    
+
+    // Use outage duration directly (no scaling needed for seconds)
+    const outageValue = Math.floor(outageDuration);
+
+    console.log(`🔄 Updating oracle with outage duration: ${outageValue} seconds`);
+
     // Get current gas price
     const gasPrice = await provider.getFeeData();
-    
+
     // Update the oracle
-    const tx = await mockOracleContract.updateAnswer(scaledValue, {
+    const tx = await mockOracleContract.updateAnswer(outageValue, {
       gasPrice: gasPrice.gasPrice
     });
-    
+
     console.log(`📝 Transaction sent: ${tx.hash}`);
-    
+
     // Wait for confirmation
     const receipt = await tx.wait();
     console.log(`✅ Oracle updated successfully! Block: ${receipt.blockNumber}`);
-    
+
     // Verify the update
     const newValue = await mockOracleContract.latestAnswer();
     console.log(`🔍 Verified oracle value: ${newValue.toString()}`);
-    
+
     return receipt;
   } catch (error) {
     console.error('❌ Error updating oracle:', error.message);
-    // Don't throw the error - let the system continue with just USGS data
-    latestFloodData.error = `Oracle update failed: ${error.message}`;
+    // Don't throw the error - let the system continue with just outage data
+    latestOutageData.error = `Oracle update failed: ${error.message}`;
     return null;
   }
 }
 
-// Main update function
-async function updateFloodData() {
+// Main update function for outage data
+async function updateOutageData(outageDuration) {
   try {
-    console.log('\n🚀 Starting flood data update...');
-    
-    // Fetch latest USGS data
-    const waterLevel = await fetchUSGSData();
-    
+    console.log('\n⚡ Starting outage data update...');
+
+    // Process mock outage data
+    const duration = handleMockOutageData(outageDuration);
+
     // Try to update the oracle contract (non-blocking)
-    const receipt = await updateOracleContract(waterLevel);
-    
+    const receipt = await updateOracleContract(duration);
+
     if (receipt) {
-      console.log('✅ Flood data update completed successfully!\n');
-      latestFloodData.status = 'active';
-      latestFloodData.error = null;
+      console.log('✅ Outage data update completed successfully!\n');
+      latestOutageData.status = 'active';
+      latestOutageData.error = null;
     } else {
-      console.log('⚠️  USGS data updated, but oracle update failed\n');
-      latestFloodData.status = 'partial';
+      console.log('⚠️  Outage data updated, but oracle update failed\n');
+      latestOutageData.status = 'partial';
     }
   } catch (error) {
-    console.error('❌ Failed to update flood data:', error.message);
-    latestFloodData.status = 'error';
-    latestFloodData.error = error.message;
+    console.error('❌ Failed to update outage data:', error.message);
+    latestOutageData.status = 'error';
+    latestOutageData.error = error.message;
   }
 }
 
@@ -280,126 +254,57 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/api/flood-data', async (req, res) => {
+app.get('/api/outage-data', async (req, res) => {
   try {
-    // Include threshold information if contract is available
-    let thresholdData = null;
-    if (paramifyContract) {
-      try {
-        const thresholdUnits = await paramifyContract.getCurrentThreshold();
-        const thresholdFeet = Number(thresholdUnits) / 100000000000;
-        thresholdData = {
-          thresholdUnits: thresholdUnits.toString(),
-          thresholdFeet: thresholdFeet
-        };
-      } catch (error) {
-        console.warn('Could not fetch threshold data:', error.message);
-      }
-    }
-    
     res.json({
-      ...latestFloodData,
-      threshold: thresholdData
+      ...latestOutageData
     });
   } catch (error) {
-    res.json(latestFloodData);
+    res.json(latestOutageData);
   }
 });
 
-// Threshold management endpoints
-app.get('/api/threshold', async (req, res) => {
+// Outage API endpoint for stopwatch integration
+app.post('/api/outage', async (req, res) => {
   try {
-    if (!paramifyContract) {
-      return res.status(503).json({ error: 'Blockchain connection not available' });
-    }
-    
-    const thresholdUnits = await paramifyContract.getCurrentThreshold();
-    const thresholdFeet = Number(thresholdUnits) / 100000000000;
-    
-    res.json({
-      thresholdFeet: thresholdFeet,
-      thresholdUnits: thresholdUnits.toString(),
-      lastUpdate: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error fetching threshold:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+    const { outageDuration } = req.body;
 
-app.post('/api/threshold', async (req, res) => {
-  try {
-    const { thresholdFeet } = req.body;
-    
     // Validate input
-    if (typeof thresholdFeet !== 'number' || thresholdFeet <= 0) {
-      return res.status(400).json({ error: 'Invalid threshold value. Must be a positive number.' });
+    if (typeof outageDuration !== 'number' || outageDuration < 0) {
+      return res.status(400).json({ error: 'Invalid outage duration. Must be a non-negative number.' });
     }
-    
-    if (thresholdFeet > 100) {
-      return res.status(400).json({ error: 'Threshold too high. Maximum is 100 feet.' });
-    }
-    
-    if (!paramifyContract || !signer) {
-      return res.status(503).json({ error: 'Blockchain connection not available' });
-    }
-    
-    // Convert feet to contract units
-    const thresholdUnits = Math.floor(thresholdFeet * 100000000000);
-    
-    console.log(`📊 Setting threshold to ${thresholdFeet} feet (${thresholdUnits} units)`);
-    
-    // Get current gas price
-    const gasPrice = await provider.getFeeData();
-    
-    // Update the threshold
-    const tx = await paramifyContract.setThreshold(thresholdUnits, {
-      gasPrice: gasPrice.gasPrice
-    });
-    
-    console.log(`📝 Threshold update transaction sent: ${tx.hash}`);
-    
-    // Wait for confirmation
-    const receipt = await tx.wait();
-    console.log(`✅ Threshold updated successfully! Block: ${receipt.blockNumber}`);
-    
-    // Verify the update
-    const newThreshold = await paramifyContract.getCurrentThreshold();
-    const newThresholdFeet = Number(newThreshold) / 100000000000;
-    
+
+    console.log(`⚡ Received outage duration: ${outageDuration} seconds`);
+
+    // Update outage data and oracle
+    await updateOutageData(outageDuration);
+
     res.json({
       success: true,
-      message: 'Threshold updated successfully',
-      thresholdFeet: newThresholdFeet,
-      thresholdUnits: newThreshold.toString(),
-      transactionHash: tx.hash,
-      blockNumber: receipt.blockNumber
+      message: 'Outage data updated successfully',
+      outageDuration: outageDuration,
+      data: latestOutageData
     });
   } catch (error) {
-    console.error('Error updating threshold:', error);
-    
-    // Handle specific error cases
-    if (error.code === 'CALL_EXCEPTION' && error.reason?.includes('Unauthorized')) {
-      return res.status(403).json({ error: 'Unauthorized: Only contract owner can update threshold' });
-    }
-    
+    console.error('Error processing outage data:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 app.post('/api/manual-update', async (req, res) => {
   try {
-    console.log('📌 Manual update requested');
-    await updateFloodData();
-    res.json({ 
-      success: true, 
-      message: 'Flood data updated successfully',
-      data: latestFloodData
+    const { outageDuration = 0 } = req.body;
+    console.log('📌 Manual outage update requested with duration:', outageDuration);
+    await updateOutageData(outageDuration);
+    res.json({
+      success: true,
+      message: 'Outage data updated successfully',
+      data: latestOutageData
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });
@@ -408,38 +313,20 @@ app.get('/api/status', async (req, res) => {
   try {
     // Get current oracle value
     let oracleValue = null;
-    let thresholdData = null;
-    
+
     if (mockOracleContract) {
       const rawValue = await mockOracleContract.latestAnswer();
-      oracleValue = Number(rawValue) / 100000000000; // Convert back to feet
+      oracleValue = Number(rawValue); // Oracle now stores outage duration in seconds
     }
-    
-    if (paramifyContract) {
-      try {
-        const thresholdUnits = await paramifyContract.getCurrentThreshold();
-        const thresholdFeet = Number(thresholdUnits) / 100000000000;
-        thresholdData = {
-          thresholdFeet: thresholdFeet,
-          thresholdUnits: thresholdUnits.toString()
-        };
-      } catch (error) {
-        console.warn('Could not fetch threshold data:', error.message);
-      }
-    }
-    
+
     res.json({
       service: 'active',
-      lastUpdate: latestFloodData.lastUpdate,
-      currentFloodLevel: latestFloodData.value,
+      lastUpdate: latestOutageData.lastUpdate,
+      currentOutageDuration: latestOutageData.outageDuration,
       oracleValue: oracleValue,
-      dataSource: latestFloodData.source,
-      site: latestFloodData.siteInfo,
-      updateInterval: '5 minutes',
-      nextUpdate: latestFloodData.lastUpdate ? 
-        new Date(new Date(latestFloodData.lastUpdate).getTime() + 5 * 60 * 1000).toISOString() : 
-        null,
-      threshold: thresholdData
+      dataSource: latestOutageData.source,
+      updateInterval: 'on-demand',
+      nextUpdate: null // No scheduled updates for outage data
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -452,28 +339,21 @@ async function startServer() {
     // Start Express server first
     app.listen(PORT, () => {
       console.log(`🚀 Paramify backend server running on port ${PORT}`);
-      console.log(`🌐 API endpoints available:`);
+      console.log(`⚡ API endpoints available:`);
       console.log(`   - GET  /api/health`);
-      console.log(`   - GET  /api/flood-data`);
+      console.log(`   - GET  /api/outage-data`);
       console.log(`   - GET  /api/status`);
-      console.log(`   - GET  /api/threshold`);
-      console.log(`   - POST /api/threshold`);
+      console.log(`   - POST /api/outage`);
       console.log(`   - POST /api/manual-update`);
     });
     
     // Initialize Ethereum connection (non-blocking)
     await initializeEthers();
-    
-    // Perform initial data fetch
-    await updateFloodData();
-    
-    // Schedule updates every 5 minutes
-    cron.schedule('*/5 * * * *', async () => {
-      console.log('⏰ Scheduled update triggered');
-      await updateFloodData();
-    });
-    
-    console.log(`📊 USGS data updates scheduled every 5 minutes`);
+
+    // Note: No initial data fetch or scheduled updates for outage data
+    // Outage data is updated on-demand via API calls from the frontend stopwatch
+
+    console.log(`⚡ Outage API ready for on-demand updates`);
     
   } catch (error) {
     console.error('Failed to start server:', error);
