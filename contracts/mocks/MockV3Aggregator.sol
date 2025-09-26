@@ -47,7 +47,7 @@ contract MockV3Aggregator {
     }
 
     function description() external pure returns (string memory) {
-        return "Mock Flood Level Feed";
+        return "Mock Outage Duration Feed";
     }
 
     function updateAnswer(int256 _answer) external {

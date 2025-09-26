@@ -371,8 +371,8 @@
       ]
     },
     "C:\\Users\\danie\\Paramify-9\\contracts\\mocks\\MockV3Aggregator.sol": {
-      "lastModificationDate": 1758894715167,
-      "contentHash": "65cf4a2da5cb81e94f2b10a031f60211",
+      "lastModificationDate": 1758900039711,
+      "contentHash": "84c1ce58ae532d93a493b06472c20c0d",
       "sourceName": "contracts/mocks/MockV3Aggregator.sol",
       "solcConfig": {
         "version": "0.8.28",
@@ -407,8 +407,8 @@
       ]
     },
     "C:\\Users\\danie\\Paramify-9\\contracts\\Paramify.sol": {
-      "lastModificationDate": 1758895273486,
-      "contentHash": "bd015c5df3420629abfbcf8b9d5c90a5",
+      "lastModificationDate": 1758900685751,
+      "contentHash": "64bf3a9052d5126e1ca0e458e87dc431",
       "sourceName": "contracts/Paramify.sol",
       "solcConfig": {
         "version": "0.8.28",

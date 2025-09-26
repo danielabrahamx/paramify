@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { Waves, Shield, TrendingUp, Wallet, AlertCircle, CheckCircle, ArrowLeft, RefreshCw, Activity } from 'lucide-react';
-import { PARAMIFY_ADDRESS, PARAMIFY_ABI, MOCK_ORACLE_ADDRESS, MOCK_ORACLE_ABI } from './lib/contract';
-import { usgsApi, formatTimestamp, getTimeUntilNextUpdate, type ServiceStatus } from './lib/usgsApi';
+import { Zap, Shield, TrendingUp, Wallet, AlertCircle, CheckCircle, ArrowLeft, Activity } from 'lucide-react';
+import { PARAMIFY_ADDRESS, PARAMIFY_ABI } from './lib/contract';
 
 interface ParamifyDashboardProps {
   setUserType?: (userType: string | null) => void;
@@ -11,25 +10,24 @@ interface ParamifyDashboardProps {
 export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboardProps) {
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [ethBalance, setEthBalance] = useState<number>(0);
-  const [floodLevel, setFloodLevel] = useState<number>(0);
-  const [threshold, setThreshold] = useState<number>(1200000000000); // 12 feet default
-  const [thresholdInFeet, setThresholdInFeet] = useState<number>(12);
-  const [newThresholdFeet, setNewThresholdFeet] = useState<string>("");
-  const [coverageAmount, setCoverageAmount] = useState<string>("");
-  const [premium, setPremium] = useState<number>(0);
-  const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
   const [contractBalance, setContractBalance] = useState<number>(0);
   const [fundAmount, setFundAmount] = useState<string>("");
   const [transactionStatus, setTransactionStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isUpdatingThreshold, setIsUpdatingThreshold] = useState(false);
   const [isFunding, setIsFunding] = useState(false);
-  const [hasActivePolicy, setHasActivePolicy] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [walletChecked, setWalletChecked] = useState(false);
-  const [serviceStatus, setServiceStatus] = useState<ServiceStatus | null>(null);
   const [isBackendConnected, setIsBackendConnected] = useState(false);
   const [nextUpdateCountdown, setNextUpdateCountdown] = useState<string>('');
+
+  // State variables for power outage insurance
+  const [outageDuration, setOutageDuration] = useState<number>(0);
+  const [payoutRatePerMinute, setPayoutRatePerMinute] = useState<string>('');
+  const [premium, setPremium] = useState<number>(0);
+  const [hasActivePolicy, setHasActivePolicy] = useState<boolean>(false);
+  const [insuranceAmount, setInsuranceAmount] = useState<number>(0);
+  const [outageDurationInput, setOutageDurationInput] = useState<string>('');
+  const [isSettingOutage, setIsSettingOutage] = useState<boolean>(false);
 
   const handleConnectWallet = async () => {
     if (!window.ethereum) {
@@ -110,17 +108,31 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
           try {
             const contractBal = await contract.getContractBalance();
             setContractBalance(Number(ethers.formatEther(contractBal)));
-            const latestFlood = await contract.getLatestPrice();
-            setFloodLevel(Number(latestFlood));
+            const latestOutage = await contract.getLatestPrice();
+            console.log("Raw oracle value:", latestOutage.toString());
+            console.log("Converted to number:", Number(latestOutage));
+            setOutageDuration(Number(latestOutage));
             
-            // Fetch current threshold
-            try {
-              const currentThreshold = await contract.floodThreshold();
-              setThreshold(Number(currentThreshold));
-              setThresholdInFeet(Number(currentThreshold) / 100000000000);
-            } catch (e) {
-              console.log('Could not fetch threshold:', e);
+            // Check if current user has an active policy
+            const policy = await contract.policies(accounts[0]);
+            console.log("Policy for current user:", {
+              active: policy.active,
+              premium: ethers.formatEther(policy.premium),
+              payoutRatePerSecond: policy.payoutRatePerSecond.toString(),
+              paidOut: policy.paidOut
+            });
+            
+            if (policy.active) {
+              setHasActivePolicy(true);
+              const premiumInEth = Number(ethers.formatEther(policy.premium));
+              const payoutRatePerMinute = premiumInEth / 2; // Since premium = rate * 2
+              setInsuranceAmount(payoutRatePerMinute);
+              setPremium(premiumInEth);
+            } else {
+              setHasActivePolicy(false);
+              setInsuranceAmount(0);
             }
+            
           } catch (e) {
             console.log('Contract calls failed, contract may not be deployed yet:', e);
           }
@@ -153,153 +165,77 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
     fetchAdminStatus();
   }, []);
 
-  // Fetch USGS service status
-  useEffect(() => {
-    const fetchServiceStatus = async () => {
+
+  
+    const calculatePremium = (rate: number) => rate * 2;
+  
+    const handlePayoutRateChange = (value: string) => {
+      setPayoutRatePerMinute(value);
+      const rate = parseFloat(value) || 0;
+      setPremium(calculatePremium(rate));
+    };
+
+  
+    const handleBuyInsurance = async () => {
+      if (!window.ethereum || !payoutRatePerMinute) return;
+      
+      const rateValue = parseFloat(payoutRatePerMinute);
+      if (rateValue <= 0) {
+        setTransactionStatus('Please enter a valid payout rate greater than 0');
+        setTimeout(() => setTransactionStatus(''), 3000);
+        return;
+      }
+      
+      setIsLoading(true);
+      setTransactionStatus('Processing insurance purchase...');
+      
       try {
-        const status = await usgsApi.getStatus();
-        setServiceStatus(status);
-        setIsBackendConnected(true);
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, signer);
         
-        // Update flood level from USGS data
-        if (status.oracleValue !== null) {
-          setFloodLevel(status.oracleValue * 100000000000); // Convert feet to contract units
+        // Convert rate to wei properly
+        const rateInWei = ethers.parseEther(payoutRatePerMinute);
+        const calculatedPremium = ethers.parseEther(premium.toString());
+        
+        console.log('Insurance purchase parameters:');
+        console.log('- Rate per minute (ETH):', payoutRatePerMinute);
+        console.log('- Rate in wei:', rateInWei.toString());
+        console.log('- Premium (ETH):', premium.toString());
+        console.log('- Premium in wei:', calculatedPremium.toString());
+        
+        // Validate that the rate will not become zero after division by 60
+        const expectedPayoutRatePerSecond = rateInWei / 60n;
+        console.log('- Expected payout rate per second:', expectedPayoutRatePerSecond.toString(), 'wei');
+        
+        if (expectedPayoutRatePerSecond === 0n) {
+          setTransactionStatus('Rate too small! Minimum rate is 0.001 ETH per minute');
+          setIsLoading(false);
+          setTimeout(() => setTransactionStatus(''), 5000);
+          return;
         }
         
-        // Update threshold from service status
-        if (status.threshold) {
-          setThresholdInFeet(status.threshold.thresholdFeet);
-          setThreshold(Number(status.threshold.thresholdUnits));
-        }
-      } catch (error) {
-        console.error('Failed to fetch USGS service status:', error);
-        setIsBackendConnected(false);
-      }
-    };
-
-    fetchServiceStatus();
-    const interval = setInterval(fetchServiceStatus, 10000); // Check every 10 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Update countdown timer
-  useEffect(() => {
-    const updateCountdown = () => {
-      if (serviceStatus?.nextUpdate) {
-        setNextUpdateCountdown(getTimeUntilNextUpdate(serviceStatus.nextUpdate));
-      }
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-
-    return () => clearInterval(interval);
-  }, [serviceStatus]);
-
-  const handleManualUSGSUpdate = async () => {
-    try {
-      setTransactionStatus('Triggering USGS data update...');
-      const result = await usgsApi.triggerManualUpdate();
-      if (result.success) {
-        setTransactionStatus('USGS data updated successfully!');
-        // Refresh service status
-        const status = await usgsApi.getStatus();
-        setServiceStatus(status);
-      }
-    } catch (error) {
-      console.error('Failed to trigger manual update:', error);
-      setTransactionStatus('Failed to update USGS data');
-    }
-    setTimeout(() => setTransactionStatus(''), 5000);
-  };
-
-  const calculatePremium = (coverage: number) => coverage * 0.1;
-
-  const handleCoverageChange = (value: string) => {
-    setCoverageAmount(value);
-    const coverage = parseFloat(value) || 0;
-    setPremium(calculatePremium(coverage));
-  };
-
-  const handleUpdateThreshold = async () => {
-    if (!newThresholdFeet) return;
-    
-    const thresholdValue = parseFloat(newThresholdFeet);
-    if (isNaN(thresholdValue) || thresholdValue <= 0) {
-      setTransactionStatus('Invalid threshold value. Must be a positive number.');
-      setTimeout(() => setTransactionStatus(''), 5000);
-      return;
-    }
-    
-    if (thresholdValue > 100) {
-      setTransactionStatus('Threshold too high. Maximum is 100 feet.');
-      setTimeout(() => setTransactionStatus(''), 5000);
-      return;
-    }
-    
-    setIsUpdatingThreshold(true);
-    setTransactionStatus('Updating threshold...');
-    
-    try {
-      const response = await fetch('http://localhost:3001/api/threshold', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ thresholdFeet: thresholdValue })
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok && data.success) {
-        setTransactionStatus('Threshold updated successfully!');
-        setThresholdInFeet(data.thresholdFeet);
-        setThreshold(Number(data.thresholdUnits));
-        setNewThresholdFeet(""); // Clear input
+        const tx = await contract.buyInsurance(rateInWei, { value: calculatedPremium });
+        await tx.wait();
         
-        // Refresh service status
-        const status = await usgsApi.getStatus();
-        setServiceStatus(status);
-      } else {
-        throw new Error(data.error || 'Failed to update threshold');
+        console.log('Insurance purchased successfully');
+        setTransactionStatus('Insurance purchased successfully! Policy is now active.');
+        setHasActivePolicy(true);
+        setInsuranceAmount(rateValue);
+        
+        // Update balances
+        const balance = await provider.getBalance(walletAddress);
+        setEthBalance(Number(ethers.formatEther(balance)));
+        const contractBal = await contract.getContractBalance();
+        setContractBalance(Number(ethers.formatEther(contractBal)));
+        
+      } catch (e: any) {
+        console.error('Insurance purchase error:', e);
+        setTransactionStatus(`Insurance purchase failed! ${e.reason || e.message || 'Unknown error'}`);
       }
-    } catch (e: any) {
-      console.error('Threshold update error:', e);
-      setTransactionStatus(`Threshold update failed! ${e.message || 'Unknown error'}`);
-    }
-    
-    setIsUpdatingThreshold(false);
-    setTimeout(() => setTransactionStatus(''), 5000);
-  };
-
-  const handleBuyInsurance = async () => {
-    if (!window.ethereum || !coverageAmount) return;
-    setIsLoading(true);
-    setTransactionStatus('Processing insurance purchase...');
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, signer);
-      const coverage = ethers.parseEther(coverageAmount);
-      const calculatedPremium = ethers.parseEther(premium.toString());
-      const tx = await contract.buyInsurance(coverage, { value: calculatedPremium });
-      await tx.wait();
-      setTransactionStatus('Insurance purchased successfully!');
-      setHasActivePolicy(true);
-      setInsuranceAmount(parseFloat(coverageAmount));
-      const balance = await provider.getBalance(walletAddress);
-      setEthBalance(Number(ethers.formatEther(balance)));
-      const contractBal = await contract.getContractBalance();
-      setContractBalance(Number(ethers.formatEther(contractBal)));
-    } catch (e: any) {
-      console.error('Insurance purchase error:', e);
-      setTransactionStatus(`Insurance purchase failed! ${e.reason || e.message || 'Unknown error'}`);
-    }
-    setIsLoading(false);
-    setTimeout(() => setTransactionStatus(''), 5000);
-  };
-
+      setIsLoading(false);
+      setTimeout(() => setTransactionStatus(''), 8000);
+    };
   const handleFundContract = async () => {
     if (!window.ethereum || !fundAmount) return;
     setIsFunding(true);
@@ -372,22 +308,40 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, signer);
+      
+      // Check if eligible for payout first
+      const accounts = await provider.send('eth_requestAccounts', []);
+      const customerAddress = accounts[0];
+      const isEligible = await contract.isPayoutEligible(customerAddress);
+      
+      if (!isEligible) {
+        setTransactionStatus('Not eligible for payout. Check if you have an active policy and outage duration > 0.');
+        setIsLoading(false);
+        setTimeout(() => setTransactionStatus(''), 5000);
+        return;
+      }
+      
+      console.log('Triggering payout for address:', customerAddress);
       const tx = await contract.triggerPayout();
       await tx.wait();
-      setTransactionStatus('Payout triggered successfully!');
+      console.log('Payout transaction completed:', tx.hash);
+      
+      setTransactionStatus('Payout triggered successfully! Check your wallet balance.');
       setHasActivePolicy(false);
       setInsuranceAmount(0);
+      
       // Update balances
       const balance = await provider.getBalance(walletAddress);
       setEthBalance(Number(ethers.formatEther(balance)));
       const contractBal = await contract.getContractBalance();
       setContractBalance(Number(ethers.formatEther(contractBal)));
+      
     } catch (e: any) {
       console.error('Payout trigger error:', e);
       setTransactionStatus(`Payout failed! ${e.reason || e.message || 'Unknown error'}`);
     }
     setIsLoading(false);
-    setTimeout(() => setTransactionStatus(''), 5000);
+    setTimeout(() => setTransactionStatus(''), 8000); // Longer timeout for success message
   };
 
   const addLocalNetwork = async () => {
@@ -425,7 +379,7 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
 
   const switchToLocalNetwork = async () => {
     if (!window.ethereum) return;
-    
+
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
@@ -440,6 +394,33 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
       }
     }
   };
+
+  
+    const handleSetOutageDuration = async () => {
+      if (!window.ethereum || !outageDurationInput) return;
+      setIsSettingOutage(true);
+      setTransactionStatus('Setting outage duration...');
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, signer);
+  
+        const durationInSeconds = parseInt(outageDurationInput);
+        const tx = await contract.setOutageDuration(durationInSeconds);
+        await tx.wait();
+        setTransactionStatus('Outage duration set successfully!');
+        setOutageDurationInput('');
+        
+        // Update the displayed outage duration
+        setOutageDuration(durationInSeconds);
+      } catch (e: any) {
+        console.error('Set outage duration error:', e);
+        setTransactionStatus(`Failed to set outage duration: ${e.reason || e.message || 'Unknown error'}`);
+      }
+      setIsSettingOutage(false);
+      setTimeout(() => setTransactionStatus(''), 5000);
+    };
+  
 
   const roleStatuses = [
     { name: 'Admin', status: true },
@@ -499,7 +480,7 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
             </button>
             <div className="flex items-center justify-center">
               <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full shadow-lg">
-                <Waves className="h-8 w-8 text-white" />
+                <Zap className="h-8 w-8 text-white" />
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -511,10 +492,10 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
           <div className="mb-4">
             <p className="text-gray-300 text-sm mb-2">Paramify Logo</p>
             <h1 className="text-3xl font-bold text-white mb-2">
-              Paramify: Flood Insurance Oracle
+              Paramify: Power Outage Insurance Oracle
             </h1>
             <p className="text-gray-300 text-lg">
-              Buy flood insurance and claim payouts if flood levels exceed the threshold.
+              Buy power outage insurance and claim payouts based on outage duration.
             </p>
           </div>
         </div>
@@ -561,129 +542,67 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
           <div className="mb-8">
             <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
               <TrendingUp className="mr-2 h-5 w-5 text-blue-300" />
-              Flood Level
+              Outage Duration
             </h3>
             <div className="space-y-4">
-              <div className={`rounded-lg p-6 ${floodLevel >= threshold ? 'bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-400/30' : 'bg-gradient-to-r from-blue-500/20 to-purple-500/20'}`}>
+              <div className={`rounded-lg p-6 ${outageDuration > 0 ? 'bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-400/30' : 'bg-gradient-to-r from-blue-500/20 to-purple-500/20'}`}>
                 <div className="text-center">
-                  <div className={`text-3xl font-bold mb-2 ${floodLevel >= threshold ? 'text-red-300' : 'text-white'}`}>
-                    {(floodLevel / 100000000000).toFixed(2)} ft
+                  <div className={`text-3xl font-bold mb-2 ${outageDuration > 0 ? 'text-red-300' : 'text-white'}`}>
+                    {outageDuration} seconds
                   </div>
                   <div className="text-gray-300">
-                    (Threshold: {thresholdInFeet.toFixed(1)} ft)
+                    Current outage duration
                   </div>
                   <div className="text-gray-400 text-sm mt-1">
-                    = {floodLevel.toFixed(0)} units
+                    Expected Payout: {(outageDuration * (premium / 2) / 60).toFixed(4)} ETH
                   </div>
-                  {floodLevel >= threshold && (
-                    <div className="mt-2 text-red-300 font-semibold">⚠️ THRESHOLD EXCEEDED</div>
+                  {outageDuration > 0 && (
+                    <div className="mt-2 text-red-300 font-semibold">⚠️ POWER OUTAGE DETECTED</div>
                   )}
                 </div>
               </div>
-              {isAdmin && (
-                <div className="bg-black/20 rounded-lg p-4 mt-2">
-                  <h4 className="text-white font-medium mb-3 flex items-center">
-                    <Shield className="h-4 w-4 mr-2 text-yellow-300" />
-                    Threshold Management
-                  </h4>
-                  <div className="bg-black/30 rounded-lg p-3 mb-3">
-                    <p className="text-gray-400 text-xs mb-1">Current Threshold</p>
-                    <p className="text-white font-bold">{thresholdInFeet.toFixed(1)} feet</p>
-                    <p className="text-gray-400 text-xs mt-1">= {threshold.toFixed(0)} units</p>
-                  </div>
-                  <div className="space-y-3">
-                    <input
-                      type="number"
-                      value={newThresholdFeet}
-                      onChange={(e) => setNewThresholdFeet(e.target.value)}
-                      className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                      placeholder="New threshold (feet)"
-                      step="0.1"
-                      min="0"
-                      max="100"
-                    />
-                    <button
-                      onClick={handleUpdateThreshold}
-                      disabled={isUpdatingThreshold || !newThresholdFeet}
-                      className="w-full bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
-                    >
-                      {isUpdatingThreshold ? (
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Updating...
-                        </div>
-                      ) : (
-                        'Update Threshold'
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* USGS Data Integration Status */}
+          {/* Outage Duration Simulator */}
           <div className="mb-8">
             <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-              <Activity className="mr-2 h-5 w-5 text-green-300" />
-              USGS Real-Time Data
+              <Activity className="mr-2 h-5 w-5 text-orange-300" />
+              Power Outage Simulator
             </h3>
             <div className="bg-black/20 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <div className={`w-3 h-3 rounded-full ${isBackendConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
-                  <span className={`text-sm font-medium ${isBackendConnected ? 'text-green-300' : 'text-red-300'}`}>
-                    {isBackendConnected ? 'Connected to USGS Service' : 'USGS Service Disconnected'}
-                  </span>
-                </div>
+              <p className="text-gray-300 text-sm mb-4">
+                Simulate a power outage by setting the duration in seconds. This will update the oracle value.
+              </p>
+              <div className="space-y-3">
+                <input
+                  type="number"
+                  value={outageDurationInput}
+                  onChange={(e) => setOutageDurationInput(e.target.value)}
+                  className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="Outage duration (seconds)"
+                  min="0"
+                />
                 <button
-                  onClick={handleManualUSGSUpdate}
-                  disabled={!isBackendConnected}
-                  className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-3 py-1 rounded-lg text-sm transition-all duration-200"
+                  onClick={handleSetOutageDuration}
+                  disabled={isSettingOutage || !outageDurationInput || parseInt(outageDurationInput) <= 0}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
                 >
-                  <RefreshCw className="h-4 w-4" />
-                  <span>Manual Update</span>
+                  {isSettingOutage ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Setting Outage...
+                    </div>
+                  ) : (
+                    '⚡ Simulate Power Outage'
+                  )}
                 </button>
+                <div className="bg-black/30 rounded-lg p-3">
+                  <p className="text-gray-400 text-xs mb-1">Current Outage Duration</p>
+                  <p className="text-white font-bold">{outageDuration > 0 ? `${outageDuration} seconds` : 'No outage'}</p>
+                  <p className="text-gray-400 text-xs mt-1">Expected Payout: {(outageDuration * (premium / 2) / 60).toFixed(4)} ETH</p>
+                </div>
               </div>
-              
-              {serviceStatus && (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-black/30 rounded-lg p-3">
-                      <p className="text-gray-400 text-xs mb-1">USGS Water Level</p>
-                      <p className="text-white font-bold">{serviceStatus.currentFloodLevel?.toFixed(2) || 'N/A'} ft</p>
-                      <p className="text-gray-400 text-xs mt-1">= {((serviceStatus.currentFloodLevel || 0) * 100000000000).toFixed(0)} units</p>
-                    </div>
-                    <div className="bg-black/30 rounded-lg p-3">
-                      <p className="text-gray-400 text-xs mb-1">Next Update In</p>
-                      <p className="text-white font-bold">{nextUpdateCountdown}</p>
-                      <p className="text-gray-400 text-xs mt-1">Every 5 minutes</p>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-black/30 rounded-lg p-3">
-                    <p className="text-gray-400 text-xs mb-1">Data Source</p>
-                    <p className="text-white text-sm font-medium">{serviceStatus.site.name}</p>
-                    <p className="text-gray-400 text-xs">Site ID: {serviceStatus.site.siteId}</p>
-                  </div>
-                  
-                  <div className="bg-black/30 rounded-lg p-3">
-                    <p className="text-gray-400 text-xs mb-1">Last Updated</p>
-                    <p className="text-white text-sm">{formatTimestamp(serviceStatus.lastUpdate)}</p>
-                  </div>
-                </div>
-              )}
-              
-              {!isBackendConnected && (
-                <div className="mt-4 bg-yellow-500/20 border border-yellow-400/30 rounded-lg p-3">
-                  <p className="text-yellow-200 text-sm">
-                    ⚠️ USGS service not running. Start the backend server to enable automatic updates.
-                  </p>
-                  <p className="text-yellow-200/70 text-xs mt-1">
-                    Run: cd backend && npm start
-                  </p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -697,9 +616,9 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
                 <div className="bg-green-500/20 border border-green-400/30 rounded-lg p-6">
                   <h4 className="text-green-200 font-semibold text-lg mb-4">✓ Active Insurance Policy</h4>
                   <div className="space-y-2">
-                    <p className="text-white"><span className="text-green-300">Coverage:</span> {insuranceAmount.toFixed(1)} ETH</p>
+                    <p className="text-white"><span className="text-green-300">Payout Rate:</span> {insuranceAmount.toFixed(1)} ETH/min</p>
                     <p className="text-white"><span className="text-green-300">Status:</span> Active</p>
-                    {floodLevel >= threshold && (
+                    {outageDuration > 0 && (
                       <div className="mt-4">
                         <button
                           onClick={handleTriggerPayout}
@@ -715,7 +634,7 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
                             '🚨 Trigger Emergency Payout'
                           )}
                         </button>
-                        <p className="text-red-300 text-sm mt-2">⚠️ Flood threshold exceeded - payout available</p>
+                        <p className="text-red-300 text-sm mt-2">⚠️ Power outage detected - payout available</p>
                       </div>
                     )}
                   </div>
@@ -731,17 +650,23 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
                   <div className="space-y-3">
                     <input
                       type="number"
-                      value={coverageAmount}
-                      onChange={(e) => handleCoverageChange(e.target.value)}
+                      value={payoutRatePerMinute}
+                      onChange={(e) => handlePayoutRateChange(e.target.value)}
                       className="w-full bg-black/30 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="Coverage amount (ETH)"
+                      placeholder="Payout rate per minute (ETH)"
+                      min="0.001"
+                      step="0.001"
                     />
+                    <p className="text-gray-400 text-xs mt-1">
+                      Minimum: 0.001 ETH/minute. Recommended: 1-10 ETH/minute for testing.
+                    </p>
                     <div className="bg-black/30 rounded-lg p-3">
                       <p className="text-gray-300">Premium: <span className="text-white font-bold">{premium.toFixed(1)} ETH</span></p>
+                      <p className="text-gray-300 text-sm mt-1">Formula: Premium = Rate × 2</p>
                     </div>
                     <button
                       onClick={handleBuyInsurance}
-                      disabled={isLoading || !coverageAmount || parseFloat(coverageAmount) <= 0}
+                      disabled={isLoading || !payoutRatePerMinute || parseFloat(payoutRatePerMinute) <= 0}
                       className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
                     >
                       {isLoading ? (
@@ -765,11 +690,7 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
  
           <div className="mb-8">
             <h3 className="text-xl font-semibold text-white mb-4">Contract Info</h3>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="bg-black/20 rounded-lg p-4">
-                <p className="text-gray-300 text-sm">Insurance Amount</p>
-                <p className="text-white font-bold text-lg">{insuranceAmount} units</p>
-              </div>
+            <div className="grid grid-cols-1 gap-4 mb-4">
               <div className="bg-black/20 rounded-lg p-4">
                 <p className="text-gray-300 text-sm">Contract Balance</p>
                 <p className="text-white font-bold text-lg">{contractBalance.toFixed(1)} ETH</p>

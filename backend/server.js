@@ -10,50 +10,31 @@ const PORT = process.env.PORT || 3001;
 const PARAMIFY_ADDRESS = process.env.PARAMIFY_ADDRESS;
 const MOCK_ORACLE_ADDRESS = process.env.MOCK_ORACLE_ADDRESS;
 
-// Paramify ABI (threshold management functions)
+// Paramify ABI (power outage insurance functions)
 const PARAMIFY_ABI = [
   {
-    "inputs": [
+    "inputs": [],
+    "name": "getLatestOutageDuration",
+    "outputs": [
       {
-        "internalType": "uint256",
-        "name": "_newThreshold",
-        "type": "uint256"
+        "internalType": "int256",
+        "name": "",
+        "type": "int256"
       }
     ],
-    "name": "setThreshold",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "triggerPayout",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [],
-    "name": "getCurrentThreshold",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getThresholdInFeet",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "floodThreshold",
+    "name": "getContractBalance",
     "outputs": [
       {
         "internalType": "uint256",
@@ -150,10 +131,10 @@ async function initializeEthers() {
     console.log('Network:', network.name, 'Chain ID:', network.chainId.toString());
   } catch (error) {
     console.warn('⚠️  Could not connect to blockchain immediately:', error.message);
-    console.log('📡 Backend will continue running for USGS data fetching');
+    console.log('📡 Backend will continue running for outage data fetching');
     console.log('🔄 Blockchain connection will be retried when needed');
-    latestFloodData.status = 'partial';
-    latestFloodData.error = 'Blockchain connection pending';
+    latestOutageData.status = 'partial';
+    latestOutageData.error = 'Blockchain connection pending';
   }
 }
 

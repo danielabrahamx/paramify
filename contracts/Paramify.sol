@@ -61,6 +61,14 @@ contract Paramify is AccessControl {
         emit OracleAddressUpdated(oldOracle, _oracleAddress);
     }
 
+    // Function to set outage duration for testing (no admin restriction for testing)
+    function setOutageDuration(int256 _duration) public {
+        // For testing: directly update the oracle price feed with outage duration
+        // This works with MockV3Aggregator which has an updateAnswer function
+        (bool success,) = address(priceFeed).call(abi.encodeWithSignature("updateAnswer(int256)", _duration));
+        require(success, "Failed to update oracle");
+    }
+
 
     function buyInsurance(uint256 _payoutRatePerMinute) external payable {
         require(msg.value > 0, "Premium must be greater than 0");
@@ -95,10 +103,24 @@ contract Paramify is AccessControl {
         policy.paidOut = true;
         policy.active = false;
 
+        // Calculate payout: (outage duration in seconds) * (payout rate per second)
         uint256 payoutAmount = uint256(outageDuration) * policy.payoutRatePerSecond;
-        (bool sent, ) = msg.sender.call{value: payoutAmount}("");
-        require(sent, "Payout failed");
 
+        // Debug: emit events to track what's happening
+        emit PayoutTriggered(msg.sender, payoutAmount);
+
+        // If payoutAmount is 0, that's a problem
+        if (payoutAmount == 0) {
+            revert("Payout amount is 0 - check oracle value and payout rate");
+        }
+
+        require(address(this).balance >= payoutAmount, "Insufficient contract balance for payout");
+
+        // Send the payout
+        (bool sent, ) = msg.sender.call{value: payoutAmount}("");
+        require(sent, "Payout failed - check contract balance and amount");
+
+        // Emit final success event
         emit PayoutTriggered(msg.sender, payoutAmount);
     }
 
