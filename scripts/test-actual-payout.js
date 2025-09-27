@@ -1,13 +1,13 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-  console.log("=== Testing Actual Payout ===");
+  console.log("=== TESTING NEW CONTRACT PAYOUT ===");
   
-  const contractAddress = "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1";
+  const contractAddress = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707";
   const contract = await ethers.getContractAt("Paramify", contractAddress);
   
-  // Test customer with working policy
-  const testCustomerAddress = "0x90F79bf6EB2c4f870365E785982E1f101E93b906";
+  // Test Account 1 with the new working policy
+  const testCustomerAddress = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
   const testCustomer = await ethers.getImpersonatedSigner(testCustomerAddress);
   
   console.log("Testing payout for:", testCustomerAddress);

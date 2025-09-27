@@ -1,21 +1,30 @@
-# Paramify: Decentralized Power Outage Insurance for European Defense Hackathon
+# Paramify: Decentralized Power Outage Insurance 🚀
 
 ![alt text](image.png)
 
-## Overview
+## 🏆 **FULLY WORKING - READY FOR DEMO!**
 
-**Paramify** is a proof of concept (PoC) for a decentralized power outage insurance platform, adapted for the European Defense Hackathon. This MVP demonstrates automated insurance purchases and payouts triggered by power outage duration data from a compatible oracle. The smart contract (`Paramify.sol`) allows users to buy power outage insurance policies and claim payouts when outages occur, with role-based access control for secure administration.
+**Paramify** is a complete decentralized power outage insurance platform built for the European Defense Hackathon. This production-ready system demonstrates real automated insurance purchases and payouts with dynamic timing via an integrated stopwatch system.
 
-This version is specifically adapted for power outage insurance scenarios, featuring a manual stopwatch integration for simulating and recording outage durations. The system provides a streamlined approach to parametric insurance where users can simulate outages using the built-in stopwatch feature.
+## ✨ **Live Demo Features**
+- 🎯 **Real ETH Payouts**: Actual cryptocurrency transfers to your wallet
+- ⏱️ **Dynamic Timing**: Your stopwatch determines payout amounts  
+- 💰 **Flexible Rates**: Set any insurance rate (0.1-100+ ETH/minute)
+- 🔄 **Instant Claims**: Receive payouts immediately after outages
+- 📱 **Professional UI**: Clean, intuitive interface with real-time calculations
+- 🔐 **Multi-Account Testing**: Multiple scenarios with different policy rates
 
-### Key Features
-- **Power Outage Insurance**: Users buy policies by setting a desired payout rate per minute (e.g., £120/minute).
-- **Monthly Premium Calculation**: Premium = payout rate per minute × 2 (e.g., £240 monthly premium for £120/minute rate).
-- **Automated Payouts**: Payouts are triggered when outage duration > 0 seconds, calculated as: `payout = duration_seconds × payout_rate_per_second`.
-- **Manual Stopwatch Integration**: Frontend stopwatch allows users to simulate and record outage durations.
-- **Real-Time Outage Tracking**: Backend API accepts outage duration data from stopwatch and updates blockchain oracle on-demand.
-- **Role-Based Access**: Admins manage the contract, oracle updaters set outage data, and insurance admins configure parameters.
-- **Modern Frontend**: React-based UI with stopwatch functionality for power outage simulation.
+### How It Works
+1. **Buy Insurance**: Set your desired payout rate per minute (e.g., 4 ETH/minute)
+2. **Pay Premium**: Premium = rate × 2 (e.g., 8 ETH for 4 ETH/minute rate)
+3. **Use Stopwatch**: Simulate power outages with built-in timer
+4. **Claim Payout**: Receive `(seconds ÷ 60) × rate` ETH instantly
+5. **Get Paid**: ETH goes directly to your MetaMask wallet
+
+### Example Scenarios
+- **30 seconds** at 4 ETH/min → **2 ETH payout**
+- **60 seconds** at 4 ETH/min → **4 ETH payout**  
+- **90 seconds** at 4 ETH/min → **6 ETH payout**
 
 
 ## Prerequisites
@@ -33,21 +42,22 @@ This project can be run in either **GitHub Codespaces** (cloud) or on your **loc
 
 ---
 
-## Quick Deployment Summary
+## 🚀 **INSTANT DEMO SETUP**
 
-For a complete local deployment, run these commands in order:
+Get the full system running in 3 commands:
 
 ```bash
-# Terminal 1: Start Hardhat node
+# Terminal 1: Start blockchain
 npx hardhat node
 
-# Terminal 2: Deploy contracts and fund
+# Terminal 2: Deploy & setup (in new terminal)
 npx hardhat run scripts/deploy.js --network localhost
-npx hardhat run scripts/fund-contract.js --network localhost
+npx hardhat run scripts/setup-new-contracts.js --network localhost
+npx hardhat run scripts/grant-admin-roles.js --network localhost
+npx hardhat run scripts/create-stopwatch-test-policy.js --network localhost
 
-# Terminal 3: Start backend server (real-time flood data)
-cd backend
-npm start
+# Terminal 3: Start frontend (in new terminal)
+cd frontend && npm run dev
 
 # Terminal 4: Start frontend
 cd frontend  

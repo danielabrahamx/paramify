@@ -75,7 +75,10 @@ contract Paramify is AccessControl {
         require(_payoutRatePerMinute > 0, "Payout rate must be greater than 0");
         require(!policies[msg.sender].active, "Policy already active");
 
+        // Fix integer division by ensuring minimum rate
+        require(_payoutRatePerMinute >= 60, "Payout rate too small - minimum 60 wei per minute to avoid division by zero");
         uint256 payoutRatePerSecond = _payoutRatePerMinute / 60;
+        require(payoutRatePerSecond > 0, "Payout rate per second cannot be zero");
         uint256 requiredPremium = _payoutRatePerMinute * 2;
         require(msg.value >= requiredPremium, "Insufficient premium");
 

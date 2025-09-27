@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 async function main() {
   console.log("=== Setting Oracle to Match UI (12 seconds) ===");
   
-  const contractAddress = "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1";
+  const contractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
   const contract = await ethers.getContractAt("Paramify", contractAddress);
   
   // Set oracle to 12 seconds to match the UI display

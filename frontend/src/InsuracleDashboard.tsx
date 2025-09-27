@@ -113,6 +113,16 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
               setHasActivePolicy(true);
               setInsuranceAmount(Number(ethers.formatEther(policy.coverage)));
               setPremium(Number(ethers.formatEther(policy.premium)));
+              
+              // Calculate the original payout rate per minute from the stored per-second rate
+              // payoutRatePerSecond * 60 = payoutRatePerMinute
+              const payoutRatePerSecondEth = Number(ethers.formatEther(policy.payoutRatePerSecond));
+              const payoutRatePerMinuteFromPolicy = payoutRatePerSecondEth * 60;
+              setPayoutRatePerMinute(payoutRatePerMinuteFromPolicy);
+              
+              console.log('Loaded existing policy:');
+              console.log('- PayoutRatePerSecond:', payoutRatePerSecondEth, 'ETH/second');
+              console.log('- PayoutRatePerMinute:', payoutRatePerMinuteFromPolicy, 'ETH/minute');
             }
           } catch (e) {
             console.warn('Could not fetch policy:', e);
@@ -251,24 +261,27 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, signer);
 
+      // Convert payout rate from ETH to wei (contract expects wei)
+      const payoutRatePerMinuteWei = ethers.parseEther(payoutRatePerMinute.toString());
+      
       // Calculate required premium (payoutRatePerMinute * 2)
       const requiredPremium = payoutRatePerMinute * 2;
       const premiumInWei = ethers.parseEther(requiredPremium.toString());
 
-      console.log('Calling buyInsurance with payoutRatePerMinute:', payoutRatePerMinute, 'premium:', requiredPremium, 'ETH');
+      console.log('Calling buyInsurance with payoutRatePerMinute (wei):', payoutRatePerMinuteWei.toString(), 'premium:', requiredPremium, 'ETH');
 
       setTransactionStatus('Estimating gas...');
 
       // First estimate gas to catch any revert early
       try {
-        await contract.buyInsurance.estimateGas(payoutRatePerMinute, { value: premiumInWei });
+        await contract.buyInsurance.estimateGas(payoutRatePerMinuteWei, { value: premiumInWei });
       } catch (gasError) {
         console.error('Gas estimation failed:', gasError);
         throw new Error(`Transaction would fail: ${gasError.reason || gasError.message || 'Unknown error'}`);
       }
 
       setTransactionStatus('Sending transaction...');
-      const tx = await contract.buyInsurance(payoutRatePerMinute, { value: premiumInWei });
+      const tx = await contract.buyInsurance(payoutRatePerMinuteWei, { value: premiumInWei });
 
       setTransactionStatus('Transaction sent. Waiting for confirmation...');
       await tx.wait();

@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 async function main() {
   console.log("=== Creating Working Insurance Policy ===");
   
-  const contractAddress = "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1";
+  const contractAddress = "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F";
   const contract = await ethers.getContractAt("Paramify", contractAddress);
   
   // Use account 3 for fresh testing
