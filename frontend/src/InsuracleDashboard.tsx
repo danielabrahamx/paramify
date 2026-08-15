@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { Waves, Shield, TrendingUp, Wallet, Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft, Activity, Satellite, Radar, MapPin, Building2, Zap } from 'lucide-react';
 import { PARAMIFY_ADDRESS, PARAMIFY_ABI } from './lib/contract';
 import { usgsApi, formatTimestamp, getTimeUntilNextUpdate, type ServiceStatus } from './lib/usgsApi';
+import { getCurrentPosition, formatCoords, type GeoCoords } from './lib/geolocation';
 
 interface InsuracleDashboardProps {
   setUserType?: (userType: string | null) => void;
@@ -33,8 +34,10 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
   const getProviderAndSigner = async () => {
     if (window.ethereum) {
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      return { provider, signer, address: await signer.getAddress() };
+      // eth_requestAccounts returns the CURRENTLY selected MetaMask account
+      const accounts = await provider.send('eth_requestAccounts', []);
+      const signer = await provider.getSigner(accounts[0]);
+      return { provider, signer, address: accounts[0] };
     }
     // No wallet extension — fall back to hardhat node account directly
     const provider = new ethers.JsonRpcProvider('http://localhost:8545');
@@ -46,15 +49,16 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
   // Drone / satellite damage assessment simulation state
   const [scanPhase, setScanPhase] = useState<'idle' | 'scanning' | 'damage-found' | 'owner-located' | 'paid'>('idle');
   const [scanStep, setScanStep] = useState(0);
-  const [govOwner, setGovOwner] = useState<{ name: string; homeAddress: string; wallet: string; damagePct: number } | null>(null);
+  const [govOwner, setGovOwner] = useState<{ name: string; homeAddress: string; wallet: string; damagePct: number; coords: string } | null>(null);
   const [payoutTx, setPayoutTx] = useState<string>('');
 
   // Simulated government property registry (demo)
-  const govRegistry = (wallet: string) => ({
+  const govRegistry = (wallet: string, coords: string) => ({
     name: 'Daniel Abraham',
     homeAddress: '12 Kings Road, London, UK',
     wallet,
     damagePct: 87,
+    coords,
   });
 
   const runDroneScan = async () => {
@@ -62,6 +66,10 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
     setScanStep(0);
     setPayoutTx('');
     setGovOwner(null);
+
+    // Step 0: get real geolocation
+    const geo: GeoCoords = await getCurrentPosition();
+    const coordsLabel = formatCoords(geo);
 
     // Step 1: satellite geolocation
     await new Promise(r => setTimeout(r, 1500));
@@ -73,7 +81,7 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
     // Step 3: gov database owner lookup
     await new Promise(r => setTimeout(r, 1500));
     setScanStep(3);
-    const owner = govRegistry(walletAddress);
+    const owner = govRegistry(walletAddress, coordsLabel);
     setGovOwner(owner);
     setScanPhase('owner-located');
     // Step 4: instant payout to owner's account
@@ -156,6 +164,38 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
       }
     };
     fetchData();
+  }, []);
+
+  // Re-fetch when the user switches accounts in MetaMask
+  useEffect(() => {
+    if (window.ethereum && window.ethereum.on) {
+      const handleAccountsChanged = () => {
+        const fetchData = async () => {
+          try {
+            const { provider, address } = await getProviderAndSigner();
+            setWalletAddress(address);
+            const balance = await provider.getBalance(address);
+            setEthBalance(Number(ethers.formatEther(balance)));
+            const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, provider);
+            const policy = await contract.policies(address);
+            if (policy.customer !== "0x0000000000000000000000000000000000000000" && policy.active) {
+              setHasActivePolicy(true);
+              setInsuranceAmount(Number(ethers.formatEther(policy.coverage)));
+              setPolicyAmount(Number(ethers.formatEther(policy.coverage)));
+              setPremium(Number(ethers.formatEther(policy.premium)));
+            } else {
+              setHasActivePolicy(false);
+              setInsuranceAmount(0);
+            }
+          } catch (e) {
+            console.warn('Could not refresh after account switch:', e);
+          }
+        };
+        fetchData();
+      };
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      return () => window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+    }
   }, []);
 
   useEffect(() => {
@@ -521,7 +561,7 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
               {scanPhase !== 'idle' && (
                 <div className="space-y-2 mb-4">
                   {[
-                    { icon: Satellite, label: 'Satellite geolocation: home locked at 51.5194° N, 0.1270° W' },
+                    { icon: Satellite, label: `Satellite geolocation: home locked at ${govOwner ? govOwner.coords : '...'}` },
                     { icon: Radar, label: 'Drone imagery: structural damage confirmed (87%)' },
                     { icon: Building2, label: 'Gov property registry: owner matched to 12 Kings Road, London' },
                     { icon: Zap, label: 'Instant payout sent to owner account' },
@@ -543,6 +583,7 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
                     <p className="text-white font-semibold">{govOwner.name}</p>
                   </div>
                   <p className="text-gray-300 text-sm">{govOwner.homeAddress}</p>
+                  <p className="text-gray-400 text-xs mt-0.5">📍 {govOwner.coords}</p>
                   <p className="text-gray-400 font-mono text-xs break-all mt-1">{govOwner.wallet}</p>
                 </div>
               )}

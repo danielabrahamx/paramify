@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { Waves, Shield, TrendingUp, Wallet, AlertCircle, CheckCircle, ArrowLeft, RefreshCw, Activity, Satellite, Radar } from 'lucide-react';
 import { PARAMIFY_ADDRESS, PARAMIFY_ABI, MOCK_ORACLE_ADDRESS, MOCK_ORACLE_ABI } from './lib/contract';
 import { usgsApi, formatTimestamp, getTimeUntilNextUpdate, type ServiceStatus } from './lib/usgsApi';
+import { getCurrentPosition, formatCoords } from './lib/geolocation';
 
 interface ParamifyDashboardProps {
   setUserType?: (userType: string | null) => void;
@@ -97,9 +98,13 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
 
     const pushLine = (line: string) => setFeedLines(prev => [...prev, line]);
 
+    // Real geolocation for the first monitored home
+    const geo = await getCurrentPosition();
+    const coordsLabel = formatCoords(geo);
+
     // Home 1: satellite pass → clean
     await new Promise(r => setTimeout(r, 1200));
-    pushLine('SAT-01 ▸ UK-LON-0012: geolocation locked (51.5194°N, 0.1270°W)');
+    pushLine(`SAT-01 ▸ UK-LON-0012: geolocation locked (${coordsLabel})`);
     setFleetHomes(prev => prev.map(h => h.id === 'UK-LON-0012' ? { ...h, status: 'scanning' } : h));
     await new Promise(r => setTimeout(r, 1200));
     pushLine('DRN-03 ▸ UK-LON-0012: imagery analyzed — NO structural damage');
