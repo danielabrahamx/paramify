@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { Waves, Shield, TrendingUp, Wallet, Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft, Activity } from 'lucide-react';
+import { Waves, Shield, TrendingUp, Wallet, Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft, Activity, Satellite, Radar, MapPin, Building2, Zap } from 'lucide-react';
 import { PARAMIFY_ADDRESS, PARAMIFY_ABI } from './lib/contract';
 import { usgsApi, formatTimestamp, getTimeUntilNextUpdate, type ServiceStatus } from './lib/usgsApi';
 
@@ -26,14 +26,78 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
   const [isBackendConnected, setIsBackendConnected] = useState(false);
   const [nextUpdateCountdown, setNextUpdateCountdown] = useState<string>('');
 
+  // Demo mode: no MetaMask needed — sign with hardhat account #0 key against localhost:8545
+  const DEMO_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+  const [isDemoMode, setIsDemoMode] = useState(false);
+
+  const getProviderAndSigner = async () => {
+    if (window.ethereum) {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      return { provider, signer, address: await signer.getAddress() };
+    }
+    // No wallet extension — fall back to hardhat node account directly
+    const provider = new ethers.JsonRpcProvider('http://localhost:8545');
+    const signer = new ethers.Wallet(DEMO_PRIVATE_KEY, provider);
+    return { provider, signer, address: signer.address };
+  };
+
+
+  // Drone / satellite damage assessment simulation state
+  const [scanPhase, setScanPhase] = useState<'idle' | 'scanning' | 'damage-found' | 'owner-located' | 'paid'>('idle');
+  const [scanStep, setScanStep] = useState(0);
+  const [govOwner, setGovOwner] = useState<{ name: string; homeAddress: string; wallet: string; damagePct: number } | null>(null);
+  const [payoutTx, setPayoutTx] = useState<string>('');
+
+  // Simulated government property registry (demo)
+  const govRegistry = (wallet: string) => ({
+    name: 'Daniel Abraham',
+    homeAddress: '12 Kings Road, London, UK',
+    wallet,
+    damagePct: 87,
+  });
+
+  const runDroneScan = async () => {
+    setScanPhase('scanning');
+    setScanStep(0);
+    setPayoutTx('');
+    setGovOwner(null);
+
+    // Step 1: satellite geolocation
+    await new Promise(r => setTimeout(r, 1500));
+    setScanStep(1);
+    // Step 2: drone imagery confirmation
+    await new Promise(r => setTimeout(r, 1500));
+    setScanStep(2);
+    setScanPhase('damage-found');
+    // Step 3: gov database owner lookup
+    await new Promise(r => setTimeout(r, 1500));
+    setScanStep(3);
+    const owner = govRegistry(walletAddress);
+    setGovOwner(owner);
+    setScanPhase('owner-located');
+    // Step 4: instant payout to owner's account
+    await new Promise(r => setTimeout(r, 1500));
+    setScanStep(4);
+    setPayoutTx('0x' + Array.from({ length: 40 }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join(''));
+    setScanPhase('paid');
+    setHasActivePolicy(false);
+    setInsuranceAmount(0);
+    // Credit payout to owner balance (simulated)
+    const payout = policyAmount > 0 ? policyAmount : insuranceAmount || 1;
+    setEthBalance(prev => prev + payout);
+  };
+
   // Connect wallet and fetch initial data
   useEffect(() => {
     const fetchData = async () => {
-      if (window.ethereum) {
-        try {
-          const provider = new ethers.BrowserProvider(window.ethereum);
-          
-          // Check network
+      try {
+        const { provider, address } = await getProviderAndSigner();
+        setWalletAddress(address);
+        setIsDemoMode(!window.ethereum);
+
+        // Check network (only relevant when a wallet extension is in play)
+        if (window.ethereum) {
           const network = await provider.getNetwork();
           if (network.chainId !== 31337n) { // Hardhat network chainId
             setNetworkError(true);
@@ -42,55 +106,53 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
           } else {
             setNetworkError(false);
           }
-          
-          const accounts = await provider.send('eth_requestAccounts', []);
-          setWalletAddress(accounts[0]);
-          const balance = await provider.getBalance(accounts[0]);
-          setEthBalance(Number(ethers.formatEther(balance)));
-          
-          const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, provider);
-          
-          // Get contract balance
-          try {
-            const contractBal = await contract.getContractBalance();
-            setContractBalance(Number(ethers.formatEther(contractBal)));
-          } catch (e) {
-            console.warn('Could not fetch contract balance:', e);
-          }
-          
-          // Get flood level
-          try {
-            const latestFlood = await contract.getLatestPrice();
-            setFloodLevel(Number(latestFlood));
-          } catch (e) {
-            console.warn('Could not fetch flood level:', e);
-          }
-          
-          // Get current threshold
-          try {
-            const currentThreshold = await contract.floodThreshold();
-            setThreshold(Number(currentThreshold));
-            setThresholdInFeet(Number(currentThreshold) / 100000000000);
-          } catch (e) {
-            console.warn('Could not fetch threshold:', e);
-          }
-          
-          // Check if user has active policy
-          try {
-            const policy = await contract.policies(accounts[0]);
-            if (policy.customer !== "0x0000000000000000000000000000000000000000" && policy.active) {
-              setHasActivePolicy(true);
-              setInsuranceAmount(Number(ethers.formatEther(policy.coverage)));
-              setPolicyAmount(Number(ethers.formatEther(policy.coverage)));
-              setPremium(Number(ethers.formatEther(policy.premium)));
-            }
-          } catch (e) {
-            console.warn('Could not fetch policy:', e);
+        }
+        
+        const balance = await provider.getBalance(address);
+        setEthBalance(Number(ethers.formatEther(balance)));
+        
+        const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, provider);
+        
+        // Get contract balance
+        try {
+          const contractBal = await contract.getContractBalance();
+          setContractBalance(Number(ethers.formatEther(contractBal)));
+        } catch (e) {
+          console.warn('Could not fetch contract balance:', e);
+        }
+        
+        // Get flood level
+        try {
+          const latestFlood = await contract.getLatestPrice();
+          setFloodLevel(Number(latestFlood));
+        } catch (e) {
+          console.warn('Could not fetch flood level:', e);
+        }
+        
+        // Get current threshold
+        try {
+          const currentThreshold = await contract.floodThreshold();
+          setThreshold(Number(currentThreshold));
+          setThresholdInFeet(Number(currentThreshold) / 100000000000);
+        } catch (e) {
+          console.warn('Could not fetch threshold:', e);
+        }
+        
+        // Check if user has active policy
+        try {
+          const policy = await contract.policies(address);
+          if (policy.customer !== "0x0000000000000000000000000000000000000000" && policy.active) {
+            setHasActivePolicy(true);
+            setInsuranceAmount(Number(ethers.formatEther(policy.coverage)));
+            setPolicyAmount(Number(ethers.formatEther(policy.coverage)));
+            setPremium(Number(ethers.formatEther(policy.premium)));
           }
         } catch (e) {
-          console.error('Error connecting to wallet:', e);
-          setTransactionStatus('Error connecting to wallet. Make sure MetaMask is installed and connected to localhost:8545');
+          console.warn('Could not fetch policy:', e);
         }
+      } catch (e) {
+        console.error('Error connecting:', e);
+        setTransactionStatus('Error connecting. Start hardhat node + backend, or install MetaMask.');
       }
     };
     fetchData();
@@ -146,11 +208,6 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
 
   // Buy insurance (send tx)
   const handleBuyInsurance = async () => {
-    if (!window.ethereum) {
-      setTransactionStatus('MetaMask not detected. Please install MetaMask.');
-      return;
-    }
-    
     if (policyAmount <= 0) {
       setTransactionStatus('Please enter a valid policy amount.');
       return;
@@ -160,8 +217,7 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
     setTransactionStatus('Preparing transaction...');
     
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const { provider, signer } = await getProviderAndSigner();
       const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, signer);
       
       const coverage = ethers.parseEther(policyAmount.toString());
@@ -220,17 +276,11 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
 
   // Trigger payout (send tx)
   const handleTriggerPayout = async () => {
-    if (!window.ethereum) {
-      setTransactionStatus('MetaMask not detected. Please install MetaMask.');
-      return;
-    }
-    
     setIsLoading(true);
     setTransactionStatus('Checking payout conditions...');
     
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const { provider, signer } = await getProviderAndSigner();
       const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, signer);
       
       // Check if conditions are met for payout
@@ -343,6 +393,11 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
               <div className="flex items-center space-x-3">
                 <Wallet className="h-5 w-5 text-purple-300" />
                 <span className="text-white font-medium">Connected Wallet</span>
+                {isDemoMode && (
+                  <span className="bg-gradient-to-r from-cyan-500/30 to-blue-500/30 border border-cyan-400/40 text-cyan-200 text-xs font-semibold px-2 py-0.5 rounded-full">
+                    ⚡ DEMO MODE — no wallet needed
+                  </span>
+                )}
               </div>
             </div>
             <div className="bg-black/20 rounded-lg p-4 mb-4">
@@ -435,6 +490,83 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
             </div>
           </div>
   
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+              <Satellite className="mr-2 h-5 w-5 text-cyan-300" />
+              Satellite &amp; Drone Damage Assessment
+            </h3>
+            <div className="bg-black/20 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-3 h-3 rounded-full ${scanPhase === 'scanning' ? 'bg-cyan-400 animate-pulse' : scanPhase === 'paid' ? 'bg-green-400' : 'bg-gray-500'}`}></div>
+                  <span className={`text-sm font-medium ${scanPhase === 'paid' ? 'text-green-300' : 'text-cyan-200'}`}>
+                    {scanPhase === 'idle' && 'Monitoring via satellite + drone fleet'}
+                    {scanPhase === 'scanning' && 'Scanning home...'}
+                    {scanPhase === 'damage-found' && 'Damage detected'}
+                    {scanPhase === 'owner-located' && 'Owner verified in gov database'}
+                    {scanPhase === 'paid' && 'Payout complete'}
+                  </span>
+                </div>
+                <button
+                  onClick={runDroneScan}
+                  disabled={scanPhase === 'scanning'}
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg flex items-center"
+                >
+                  <Radar className="h-4 w-4 mr-2" />
+                  {scanPhase === 'scanning' ? 'Scanning...' : 'Run Scan'}
+                </button>
+              </div>
+
+              {/* Scan progress steps */}
+              {scanPhase !== 'idle' && (
+                <div className="space-y-2 mb-4">
+                  {[
+                    { icon: Satellite, label: 'Satellite geolocation: home locked at 51.5194° N, 0.1270° W' },
+                    { icon: Radar, label: 'Drone imagery: structural damage confirmed (87%)' },
+                    { icon: Building2, label: 'Gov property registry: owner matched to 12 Kings Road, London' },
+                    { icon: Zap, label: 'Instant payout sent to owner account' },
+                  ].map((step, i) => (
+                    <div key={i} className={`flex items-center space-x-2 ${scanStep >= i + 1 ? 'text-green-300' : 'text-gray-500'}`}>
+                      {scanStep >= i + 1 ? <CheckCircle className="h-4 w-4" /> : <step.icon className="h-4 w-4" />}
+                      <span className="text-sm">{step.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Owner + payout result */}
+              {govOwner && (
+                <div className="bg-black/30 rounded-lg p-4 mb-3">
+                  <p className="text-gray-400 text-xs mb-1">Gov Database — Property Owner</p>
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="h-4 w-4 text-cyan-300" />
+                    <p className="text-white font-semibold">{govOwner.name}</p>
+                  </div>
+                  <p className="text-gray-300 text-sm">{govOwner.homeAddress}</p>
+                  <p className="text-gray-400 font-mono text-xs break-all mt-1">{govOwner.wallet}</p>
+                </div>
+              )}
+
+              {scanPhase === 'paid' && payoutTx && (
+                <div className="bg-green-500/20 border border-green-400/30 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <CheckCircle className="h-5 w-5 text-green-400 mr-3" />
+                    <div>
+                      <p className="text-green-200 font-semibold">💰 Instant payout delivered to owner's account</p>
+                      <p className="text-green-300 text-sm mt-1">Tx: <span className="font-mono">{payoutTx.slice(0, 18)}...</span></p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {scanPhase === 'idle' && (
+                <p className="text-gray-400 text-sm">
+                  Demo: simulates satellite geolocation + drone damage check with instant payout to the registered owner in the government property database.
+                </p>
+              )}
+            </div>
+          </div>
+
           <div className="mb-8">
             <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
               <Shield className="mr-2 h-5 w-5 text-purple-300" />
