@@ -26,6 +26,7 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
   const [isUpdatingThreshold, setIsUpdatingThreshold] = useState(false);
   const [isFunding, setIsFunding] = useState(false);
   const [hasActivePolicy, setHasActivePolicy] = useState(false);
+  const [policyHolderAddress, setPolicyHolderAddress] = useState('0x70997970C51812dc3A010C7d01b50e0d17dc79C8'); // hardhat account #1
   const [isAdmin, setIsAdmin] = useState(false);
   const [walletChecked, setWalletChecked] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<ServiceStatus | null>(null);
@@ -206,6 +207,23 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
             setThresholdInFeet(Number(currentThreshold) / 100000000000);
           } catch (e) {
             console.log('Could not fetch threshold:', e);
+          }
+
+          // Load active policy for the policy holder
+          if (policyHolderAddress) {
+            try {
+              const policy = await contract.policies(policyHolderAddress);
+              if (policy.customer !== "0x0000000000000000000000000000000000000000" && policy.active && !policy.paidOut) {
+                setHasActivePolicy(true);
+                setInsuranceAmount(Number(ethers.formatEther(policy.coverage)));
+              } else {
+                setHasActivePolicy(false);
+                setInsuranceAmount(0);
+              }
+            } catch (e) {
+              console.log('Could not fetch policy:', e);
+              setHasActivePolicy(false);
+            }
           }
         } catch (e) {
           console.log('Contract calls failed, contract may not be deployed yet:', e);
@@ -466,6 +484,54 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
     }
     setIsLoading(false);
     setTimeout(() => setTransactionStatus(''), 5000);
+  };
+
+  // Demo payout — no flood threshold needed (simulated, frontend-only)
+  const handleDemoPayout = async () => {
+    setIsLoading(true);
+    setTransactionStatus('Initiating payout (demo)...');
+    try {
+      await new Promise(r => setTimeout(r, 1500));
+      const payout = insuranceAmount > 0 ? insuranceAmount : 1;
+      setTransactionStatus(`✅ Payout of ${payout.toFixed(2)} ETH sent to policy holder (demo)`);
+      setHasActivePolicy(false);
+      setInsuranceAmount(0);
+      // Update contract balance display (simulated)
+      setContractBalance(prev => Math.max(0, prev - payout));
+      const txHash = '0x' + Array.from({ length: 40 }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('');
+      console.log(`[demo payout] tx: ${txHash} | amount: ${payout} ETH`);
+    } catch (e) {
+      console.error('Demo payout error:', e);
+      setTransactionStatus('Demo payout failed!');
+    }
+    setIsLoading(false);
+    setTimeout(() => setTransactionStatus(''), 8000);
+  };
+
+  // Look up a policy holder's active policy from the contract
+  const handleLoadPolicy = async () => {
+    if (!policyHolderAddress) return;
+    setIsLoading(true);
+    setTransactionStatus('Looking up policy...');
+    try {
+      const { provider } = await getProviderAndSigner();
+      const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, provider);
+      const policy = await contract.policies(policyHolderAddress);
+      if (policy.customer !== "0x0000000000000000000000000000000000000000" && policy.active && !policy.paidOut) {
+        setHasActivePolicy(true);
+        setInsuranceAmount(Number(ethers.formatEther(policy.coverage)));
+        setTransactionStatus(`Policy found — coverage ${ethers.formatEther(policy.coverage)} ETH`);
+      } else {
+        setHasActivePolicy(false);
+        setInsuranceAmount(0);
+        setTransactionStatus('No active policy for this address.');
+      }
+    } catch (e) {
+      console.error('Policy lookup error:', e);
+      setTransactionStatus('Policy lookup failed!');
+    }
+    setIsLoading(false);
+    setTimeout(() => setTransactionStatus(''), 6000);
   };
 
   const addLocalNetwork = async () => {
@@ -871,6 +937,25 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
               <Shield className="mr-2 h-5 w-5 text-purple-300" />
               Insurance Policy
             </h3>
+            <div className="bg-black/20 rounded-lg p-4 mb-4">
+              <p className="text-gray-400 text-xs mb-2 font-medium">Policy holder address (on-chain lookup)</p>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={policyHolderAddress}
+                  onChange={(e) => setPolicyHolderAddress(e.target.value)}
+                  className="flex-1 bg-black/30 border border-white/20 rounded-lg px-4 py-2 text-white font-mono text-xs placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="0x..."
+                />
+                <button
+                  onClick={handleLoadPolicy}
+                  disabled={isLoading}
+                  className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-all duration-200"
+                >
+                  Load Policy
+                </button>
+              </div>
+            </div>
             <div className="space-y-4">
               {hasActivePolicy ? (
                 <div className="bg-green-500/20 border border-green-400/30 rounded-lg p-6">
@@ -878,25 +963,23 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
                   <div className="space-y-2">
                     <p className="text-white"><span className="text-green-300">Coverage:</span> {insuranceAmount.toFixed(1)} ETH</p>
                     <p className="text-white"><span className="text-green-300">Status:</span> Active</p>
-                    {floodLevel >= threshold && (
-                      <div className="mt-4">
-                        <button
-                          onClick={handleTriggerPayout}
-                          disabled={isLoading}
-                          className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
-                        >
-                          {isLoading ? (
-                            <div className="flex items-center justify-center">
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Triggering...
-                            </div>
-                          ) : (
-                            '🚨 Trigger Emergency Payout'
-                          )}
-                        </button>
-                        <p className="text-red-300 text-sm mt-2">⚠️ Flood threshold exceeded - payout available</p>
-                      </div>
-                    )}
+                    <div className="mt-4">
+                      <button
+                        onClick={handleDemoPayout}
+                        disabled={isLoading}
+                        className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none"
+                      >
+                        {isLoading ? (
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Initiating...
+                          </div>
+                        ) : (
+                          '🚨 Initiate Payout (demo)'
+                        )}
+                      </button>
+                      <p className="text-gray-400 text-sm mt-2">Demo: payout initiated by insurer without flood threshold check.</p>
+                    </div>
                   </div>
                 </div>
               ) : (
