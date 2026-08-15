@@ -118,8 +118,8 @@ const Index = () => {
 
         <div className="text-center mb-12">
           <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-            The world's first decentralized flood insurance oracle. Providing real-time flood risk assessment 
-            and automated insurance claims processing through blockchain technology.
+            The world's first decentralized parametric insurance oracle. Satellite and drone-powered damage
+            detection with automated, instant payouts through blockchain technology.
           </p>
         </div>
 
@@ -137,7 +137,7 @@ const Index = () => {
                 <div className="text-center">
                   <TrendingUp className="h-12 w-12 mx-auto mb-4 text-pink-200" />
                   <h3 className="font-semibold mb-2">Real-time Data</h3>
-                  <p className="text-sm">Advanced weather monitoring and AI-powered risk assessment for accurate flood predictions.</p>
+                  <p className="text-sm">Satellite geolocation and drone imagery provide real-time structural damage assessment.</p>
                 </div>
                 <div className="text-center">
                   <Users className="h-12 w-12 mx-auto mb-4 text-pink-200" />
@@ -158,7 +158,7 @@ const Index = () => {
               </div>
               <CardTitle className="text-2xl text-white">For Individuals</CardTitle>
               <CardDescription className="text-white/80">
-                Protect your property with personalized flood insurance coverage
+                Protect your property with parametric coverage backed by satellite and drone monitoring
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -170,7 +170,7 @@ const Index = () => {
                 Access Individual Portal
               </Button>
               <div className="mt-4 text-white/80 text-sm">
-                • Connect your wallet • Buy insurance coverage • Manage claims
+                • Connect your wallet • Buy insurance coverage • Instant damage payouts
               </div>
             </CardContent>
           </Card>
@@ -182,7 +182,7 @@ const Index = () => {
               </div>
               <CardTitle className="text-2xl text-white">For Insurance Companies</CardTitle>
               <CardDescription className="text-white/80">
-                Access our oracle data and integrate with your existing systems
+                Monitor portfolio damage from our satellite and drone fleet feed
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -194,7 +194,7 @@ const Index = () => {
                 Admin Dashboard
               </Button>
               <div className="mt-4 text-white/80 text-sm">
-                • API access • Risk analytics • White-label solutions
+                • Fleet telemetry • Instant payout initiation • Portfolio monitoring
               </div>
             </CardContent>
           </Card>
@@ -202,7 +202,7 @@ const Index = () => {
 
 
         <div className="text-center mt-16 text-white/60">
-          <p>&copy; 2025 Paramify. Revolutionizing flood insurance through blockchain technology.</p>
+          <p>&copy; 2025 Paramify. Revolutionizing parametric insurance through satellite and drone technology.</p>
         </div>
       </div>
     </div>
