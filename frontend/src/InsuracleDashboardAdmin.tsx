@@ -31,22 +31,30 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
   const [isBackendConnected, setIsBackendConnected] = useState(false);
   const [nextUpdateCountdown, setNextUpdateCountdown] = useState<string>('');
 
-  const handleConnectWallet = async () => {
-    if (!window.ethereum) {
-      setTransactionStatus('MetaMask not detected. Please install MetaMask.');
-      return;
+  // Demo mode: no MetaMask needed — sign with hardhat account #0 key (the admin) against localhost:8545
+  const DEMO_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [forceDemo, setForceDemo] = useState(false);
+
+  const getProviderAndSigner = async () => {
+    if (window.ethereum && !forceDemo) {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      return { provider, signer, address: await signer.getAddress() };
     }
+    // No wallet extension (or demo forced) — sign with the hardhat admin account directly
+    const provider = new ethers.JsonRpcProvider('http://localhost:8545');
+    const signer = new ethers.Wallet(DEMO_PRIVATE_KEY, provider);
+    return { provider, signer, address: signer.address };
+  };
+
+  const handleConnectWallet = async () => {
     try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      if (!accounts || accounts.length === 0) {
-        setTransactionStatus('Please connect your wallet to use the admin dashboard.');
-        setIsAdmin(false);
-        setWalletChecked(true);
-        return;
-      }
-      setWalletAddress(accounts[0]);
+      const { provider, address } = await getProviderAndSigner();
+      setIsDemoMode(!window.ethereum || forceDemo);
+      setWalletAddress(address);
       const adminAddress = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'.toLowerCase();
-      if (accounts[0].toLowerCase() === adminAddress) {
+      if (address.toLowerCase() === adminAddress) {
         setIsAdmin(true);
         setTransactionStatus('');
       } else {
@@ -60,6 +68,16 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
       setWalletChecked(true);
       return;
     }
+  };
+
+  // Force demo admin mode even when a wallet extension is installed
+  const handleDemoAdmin = async () => {
+    setForceDemo(true);
+    setIsDemoMode(true);
+    setIsAdmin(true);
+    setWalletAddress('0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266');
+    setWalletChecked(true);
+    setTransactionStatus('');
   };
 
   useEffect(() => {
@@ -92,42 +110,42 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
 
   useEffect(() => {
     const fetchData = async () => {
-      if (window.ethereum) {
-        try {
+      try {
+        const { provider, address } = await getProviderAndSigner();
+        setIsDemoMode(!window.ethereum);
+        if (window.ethereum) {
           // Ensure we're on the correct network
           await switchToLocalNetwork();
           
-          const provider = new ethers.BrowserProvider(window.ethereum);
           const network = await provider.getNetwork();
           console.log('Connected to network:', network.chainId);
+        }
+        
+        setWalletAddress(address);
+        const balance = await provider.getBalance(address);
+        setEthBalance(Number(ethers.formatEther(balance)));
+        
+        const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, provider);
+        try {
+          const contractBal = await contract.getContractBalance();
+          setContractBalance(Number(ethers.formatEther(contractBal)));
+          const latestFlood = await contract.getLatestPrice();
+          setFloodLevel(Number(latestFlood));
           
-          const accounts = await provider.send('eth_requestAccounts', []);
-          setWalletAddress(accounts[0]);
-          const balance = await provider.getBalance(accounts[0]);
-          setEthBalance(Number(ethers.formatEther(balance)));
-          
-          const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, provider);
+          // Fetch current threshold
           try {
-            const contractBal = await contract.getContractBalance();
-            setContractBalance(Number(ethers.formatEther(contractBal)));
-            const latestFlood = await contract.getLatestPrice();
-            setFloodLevel(Number(latestFlood));
-            
-            // Fetch current threshold
-            try {
-              const currentThreshold = await contract.floodThreshold();
-              setThreshold(Number(currentThreshold));
-              setThresholdInFeet(Number(currentThreshold) / 100000000000);
-            } catch (e) {
-              console.log('Could not fetch threshold:', e);
-            }
+            const currentThreshold = await contract.floodThreshold();
+            setThreshold(Number(currentThreshold));
+            setThresholdInFeet(Number(currentThreshold) / 100000000000);
           } catch (e) {
-            console.log('Contract calls failed, contract may not be deployed yet:', e);
+            console.log('Could not fetch threshold:', e);
           }
         } catch (e) {
-          console.error('Failed to connect to network:', e);
-          setTransactionStatus('Please connect to Hardhat Local network (Chain ID: 31337)');
+          console.log('Contract calls failed, contract may not be deployed yet:', e);
         }
+      } catch (e) {
+        console.error('Failed to connect to network:', e);
+        setTransactionStatus('Please connect to Hardhat Local network (Chain ID: 31337)');
       }
     };
     fetchData();
@@ -135,19 +153,16 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
 
   useEffect(() => {
     const fetchAdminStatus = async () => {
-      if (window.ethereum) {
-        try {
-          await switchToLocalNetwork();
-          const provider = new ethers.BrowserProvider(window.ethereum);
-          const accounts = await provider.send('eth_requestAccounts', []);
-          const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, provider);
-          // Assume contract has a public 'hasRole' method and ADMIN_ROLE constant
-          const ADMIN_ROLE = ethers.id('ADMIN_ROLE');
-          const isAdmin = await contract.hasRole(ADMIN_ROLE, accounts[0]);
-          setIsAdmin(isAdmin);
-        } catch (e) {
-          setIsAdmin(false);
-        }
+      try {
+        const { provider, address } = await getProviderAndSigner();
+        setIsDemoMode(!window.ethereum);
+        if (window.ethereum) await switchToLocalNetwork();
+        const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, provider);
+        // Contract grants DEFAULT_ADMIN_ROLE (bytes32 zero) to the deployer
+        const isAdmin = await contract.hasRole(ethers.ZeroHash, address);
+        setIsAdmin(isAdmin);
+      } catch (e) {
+        setIsAdmin(false);
       }
     };
     fetchAdminStatus();
@@ -274,12 +289,11 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
   };
 
   const handleBuyInsurance = async () => {
-    if (!window.ethereum || !coverageAmount) return;
+    if (!coverageAmount) return;
     setIsLoading(true);
     setTransactionStatus('Processing insurance purchase...');
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const { provider, signer } = await getProviderAndSigner();
       const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, signer);
       const coverage = ethers.parseEther(coverageAmount);
       const calculatedPremium = ethers.parseEther(premium.toString());
@@ -301,20 +315,19 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
   };
 
   const handleFundContract = async () => {
-    if (!window.ethereum || !fundAmount) return;
+    if (!fundAmount) return;
     setIsFunding(true);
     setTransactionStatus('Funding contract...');
     try {
-      // Ensure we're on the correct network first
-      await switchToLocalNetwork();
+      const { provider, signer } = await getProviderAndSigner();
       
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      
-      // Check network
-      const network = await provider.getNetwork();
-      if (network.chainId !== 31337n) {
-        throw new Error('Please switch to Hardhat Local network (Chain ID: 31337)');
+      // Check network (only when a wallet extension is in play)
+      if (window.ethereum) {
+        await switchToLocalNetwork();
+        const network = await provider.getNetwork();
+        if (network.chainId !== 31337n) {
+          throw new Error('Please switch to Hardhat Local network (Chain ID: 31337)');
+        }
       }
       
       // Check if the contract exists at the address
@@ -365,12 +378,10 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
   };
 
   const handleTriggerPayout = async () => {
-    if (!window.ethereum) return;
     setIsLoading(true);
     setTransactionStatus('Triggering payout...');
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const { provider, signer } = await getProviderAndSigner();
       const contract = new ethers.Contract(PARAMIFY_ADDRESS, PARAMIFY_ABI, signer);
       const tx = await contract.triggerPayout();
       await tx.wait();
@@ -441,6 +452,13 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
     }
   };
 
+  // Auto-connect in demo mode (no wallet extension) so the connect gate is skipped
+  useEffect(() => {
+    if (!window.ethereum) {
+      handleConnectWallet();
+    }
+  }, []);
+
   const roleStatuses = [
     { name: 'Admin', status: true },
     { name: 'Oracle Updater', status: true },
@@ -460,6 +478,14 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
           >
             Connect Wallet
           </button>
+          <div className="mt-4">
+            <button
+              onClick={handleDemoAdmin}
+              className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg font-semibold hover:from-cyan-600 hover:to-blue-700 transition-all"
+            >
+              ⚡ Continue as Demo Admin (no wallet needed)
+            </button>
+          </div>
           {transactionStatus && (
             <div className="mt-4 text-red-400">{transactionStatus}</div>
           )}
@@ -474,6 +500,12 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
           <h2 className="text-2xl font-bold text-white mb-4">Access Denied</h2>
           <p className="text-white/80 mb-2">You must be connected as the admin to access this dashboard.</p>
           <p className="text-white/60 text-sm mb-4">Admin address: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266</p>
+          <button
+            onClick={handleDemoAdmin}
+            className="mt-4 px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg font-semibold hover:from-cyan-600 hover:to-blue-700 transition-all"
+          >
+            ⚡ Continue as Demo Admin
+          </button>
           <button
             onClick={() => setUserType && setUserType(null)}
             className="mt-4 px-6 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg font-semibold hover:from-purple-600 hover:to-blue-600 transition-all"
@@ -503,6 +535,11 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              {isDemoMode && (
+                <div className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                  ⚡ DEMO
+                </div>
+              )}
               <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
                 👑 ADMIN
               </div>
