@@ -26,3 +26,19 @@ export function formatCoords(c: GeoCoords): string {
   const ew = c.lng >= 0 ? 'E' : 'W';
   return `${Math.abs(c.lat).toFixed(4)}° ${ns}, ${Math.abs(c.lng).toFixed(4)}° ${ew}`;
 }
+
+// Reverse geocode via OpenStreetMap Nominatim (free, no API key)
+export async function reverseGeocode(c: GeoCoords): Promise<string> {
+  if (c.source === 'fallback') return 'Demo location (permission not granted)';
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${c.lat}&lon=${c.lng}&zoom=18`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+    if (!res.ok) throw new Error('geocode failed');
+    const data = await res.json();
+    return data?.display_name?.split(',').slice(0, 2).join(', ') || formatCoords(c);
+  } catch (e) {
+    return formatCoords(c);
+  }
+}

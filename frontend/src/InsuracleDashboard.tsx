@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import { Waves, Shield, TrendingUp, Wallet, Eye, EyeOff, AlertCircle, CheckCircle, ArrowLeft, Activity, Satellite, Radar, MapPin, Building2, Zap } from 'lucide-react';
 import { PARAMIFY_ADDRESS, PARAMIFY_ABI } from './lib/contract';
 import { usgsApi, formatTimestamp, getTimeUntilNextUpdate, type ServiceStatus } from './lib/usgsApi';
-import { getCurrentPosition, formatCoords, type GeoCoords } from './lib/geolocation';
+import { getCurrentPosition, formatCoords, reverseGeocode, type GeoCoords } from './lib/geolocation';
 
 interface InsuracleDashboardProps {
   setUserType?: (userType: string | null) => void;
@@ -53,9 +53,9 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
   const [payoutTx, setPayoutTx] = useState<string>('');
 
   // Simulated government property registry (demo)
-  const govRegistry = (wallet: string, coords: string) => ({
+  const govRegistry = (wallet: string, coords: string, homeAddress: string) => ({
     name: 'Daniel Abraham',
-    homeAddress: '12 Kings Road, London, UK',
+    homeAddress,
     wallet,
     damagePct: 87,
     coords,
@@ -70,6 +70,7 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
     // Step 0: get real geolocation
     const geo: GeoCoords = await getCurrentPosition();
     const coordsLabel = formatCoords(geo);
+    const homeAddress = await reverseGeocode(geo);
 
     // Step 1: satellite geolocation
     await new Promise(r => setTimeout(r, 1500));
@@ -81,7 +82,7 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
     // Step 3: gov database owner lookup
     await new Promise(r => setTimeout(r, 1500));
     setScanStep(3);
-    const owner = govRegistry(walletAddress, coordsLabel);
+    const owner = govRegistry(walletAddress, coordsLabel, homeAddress);
     setGovOwner(owner);
     setScanPhase('owner-located');
     // Step 4: instant payout to owner's account
@@ -567,7 +568,7 @@ export default function InsuracleDashboard({ setUserType }: InsuracleDashboardPr
                   {[
                     { icon: Satellite, label: `Satellite geolocation: home locked at ${govOwner ? govOwner.coords : '...'}` },
                     { icon: Radar, label: 'Drone imagery: structural damage confirmed (87%)' },
-                    { icon: Building2, label: 'Gov property registry: owner matched to 12 Kings Road, London' },
+                    { icon: Building2, label: `Gov property registry: owner matched to ${govOwner ? govOwner.homeAddress : '...'}` },
                     { icon: Zap, label: 'Instant payout sent to owner account' },
                   ].map((step, i) => (
                     <div key={i} className={`flex items-center space-x-2 ${scanStep >= i + 1 ? 'text-green-300' : 'text-gray-500'}`}>
