@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { Waves, Shield, TrendingUp, Wallet, AlertCircle, CheckCircle, ArrowLeft, RefreshCw, Activity } from 'lucide-react';
+import { Waves, Shield, TrendingUp, Wallet, AlertCircle, CheckCircle, ArrowLeft, RefreshCw, Activity, Satellite, Radar } from 'lucide-react';
 import { PARAMIFY_ADDRESS, PARAMIFY_ABI, MOCK_ORACLE_ADDRESS, MOCK_ORACLE_ABI } from './lib/contract';
 import { usgsApi, formatTimestamp, getTimeUntilNextUpdate, type ServiceStatus } from './lib/usgsApi';
 
@@ -78,6 +78,68 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
     setWalletAddress('0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266');
     setWalletChecked(true);
     setTransactionStatus('');
+  };
+
+  // Satellite & Drone Fleet Feed (demo) state
+  const [fleetPhase, setFleetPhase] = useState<'idle' | 'scanning' | 'done'>('idle');
+  const [feedLines, setFeedLines] = useState<string[]>([]);
+  const [fleetHomes, setFleetHomes] = useState([
+    { id: 'UK-LON-0012', owner: 'Daniel Abraham', address: '12 Kings Road, London', status: 'idle', damagePct: 0, payout: 0, paidOut: false },
+    { id: 'UK-LON-0047', owner: 'Sarah Mitchell', address: '47 Abbey Road, London', status: 'idle', damagePct: 0, payout: 0, paidOut: false },
+    { id: 'UK-MAN-0231', owner: 'James Whitfield', address: '231 Deansgate, Manchester', status: 'idle', damagePct: 0, payout: 0, paidOut: false },
+    { id: 'UK-BHM-0098', owner: 'Priya Sharma', address: '98 Broad Street, Birmingham', status: 'idle', damagePct: 0, payout: 0, paidOut: false },
+  ]);
+
+  const runFleetScan = async () => {
+    setFleetPhase('scanning');
+    setFeedLines([]);
+    setFleetHomes(prev => prev.map(h => ({ ...h, status: 'idle', damagePct: 0, paidOut: false, payout: 0 })));
+
+    const pushLine = (line: string) => setFeedLines(prev => [...prev, line]);
+
+    // Home 1: satellite pass → clean
+    await new Promise(r => setTimeout(r, 1200));
+    pushLine('SAT-01 ▸ UK-LON-0012: geolocation locked (51.5194°N, 0.1270°W)');
+    setFleetHomes(prev => prev.map(h => h.id === 'UK-LON-0012' ? { ...h, status: 'scanning' } : h));
+    await new Promise(r => setTimeout(r, 1200));
+    pushLine('DRN-03 ▸ UK-LON-0012: imagery analyzed — NO structural damage');
+    setFleetHomes(prev => prev.map(h => h.id === 'UK-LON-0012' ? { ...h, status: 'checked' } : h));
+
+    // Home 2: drone confirms damage → payout
+    await new Promise(r => setTimeout(r, 1200));
+    pushLine('SAT-02 ▸ UK-LON-0047: geolocation locked (51.5320°N, 0.1230°W)');
+    setFleetHomes(prev => prev.map(h => h.id === 'UK-LON-0047' ? { ...h, status: 'scanning' } : h));
+    await new Promise(r => setTimeout(r, 1200));
+    pushLine('DRN-01 ▸ UK-LON-0047: ⚠ DAMAGE — 92% structural damage confirmed');
+    setFleetHomes(prev => prev.map(h => h.id === 'UK-LON-0047' ? { ...h, status: 'damaged', damagePct: 92 } : h));
+    await new Promise(r => setTimeout(r, 1000));
+    pushLine('GOV-DB ▸ UK-LON-0047: owner verified — Sarah Mitchell');
+    pushLine('PAYOUT ▸ 3.5 ETH sent instantly to 0x71C...9eF2 (Sarah Mitchell)');
+    setFleetHomes(prev => prev.map(h => h.id === 'UK-LON-0047' ? { ...h, paidOut: true, payout: 3.5 } : h));
+
+    // Home 3: clean
+    await new Promise(r => setTimeout(r, 1200));
+    pushLine('SAT-01 ▸ UK-MAN-0231: geolocation locked (53.4808°N, 2.2426°W)');
+    setFleetHomes(prev => prev.map(h => h.id === 'UK-MAN-0231' ? { ...h, status: 'scanning' } : h));
+    await new Promise(r => setTimeout(r, 1200));
+    pushLine('DRN-04 ▸ UK-MAN-0231: imagery analyzed — NO structural damage');
+    setFleetHomes(prev => prev.map(h => h.id === 'UK-MAN-0231' ? { ...h, status: 'checked' } : h));
+
+    // Home 4: minor damage → payout
+    await new Promise(r => setTimeout(r, 1200));
+    pushLine('SAT-02 ▸ UK-BHM-0098: geolocation locked (52.4862°N, 1.8904°W)');
+    setFleetHomes(prev => prev.map(h => h.id === 'UK-BHM-0098' ? { ...h, status: 'scanning' } : h));
+    await new Promise(r => setTimeout(r, 1200));
+    pushLine('DRN-02 ▸ UK-BHM-0098: ⚠ DAMAGE — 61% structural damage confirmed');
+    setFleetHomes(prev => prev.map(h => h.id === 'UK-BHM-0098' ? { ...h, status: 'damaged', damagePct: 61 } : h));
+    await new Promise(r => setTimeout(r, 1000));
+    pushLine('GOV-DB ▸ UK-BHM-0098: owner verified — Priya Sharma');
+    pushLine('PAYOUT ▸ 2.0 ETH sent instantly to 0x3Ae...77c1 (Priya Sharma)');
+    setFleetHomes(prev => prev.map(h => h.id === 'UK-BHM-0098' ? { ...h, paidOut: true, payout: 2.0 } : h));
+
+    await new Promise(r => setTimeout(r, 800));
+    pushLine('FLEET ▸ Scan complete — 2 payouts issued, 2 homes clear');
+    setFleetPhase('done');
   };
 
   useEffect(() => {
@@ -720,6 +782,77 @@ export default function InsuracleDashboardAdmin({ setUserType }: ParamifyDashboa
                     Run: cd backend && npm start
                   </p>
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Satellite & Drone Fleet Feed (demo) */}
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+              <Satellite className="mr-2 h-5 w-5 text-cyan-300" />
+              Satellite &amp; Drone Fleet Feed
+            </h3>
+            <div className="bg-black/20 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-3 h-3 rounded-full ${fleetPhase === 'scanning' ? 'bg-cyan-400 animate-pulse' : fleetPhase === 'done' ? 'bg-green-400' : 'bg-gray-500'}`}></div>
+                  <span className={`text-sm font-medium ${fleetPhase === 'done' ? 'text-green-300' : 'text-cyan-200'}`}>
+                    {fleetPhase === 'idle' && 'Fleet online — 4 drones, 2 satellites monitoring portfolio'}
+                    {fleetPhase === 'scanning' && 'Fleet scanning portfolio...'}
+                    {fleetPhase === 'done' && 'Scan complete — payouts issued'}
+                  </span>
+                </div>
+                <button
+                  onClick={runFleetScan}
+                  disabled={fleetPhase === 'scanning'}
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg flex items-center"
+                >
+                  <Radar className="h-4 w-4 mr-2" />
+                  {fleetPhase === 'scanning' ? 'Scanning...' : 'Run Fleet Scan'}
+                </button>
+              </div>
+
+              {/* Monitored homes */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {fleetHomes.map((home) => (
+                  <div key={home.id} className={`bg-black/30 rounded-lg p-3 border ${home.status === 'damaged' ? 'border-red-400/40' : home.status === 'checked' ? 'border-green-400/30' : 'border-white/10'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-gray-300 text-xs font-mono">{home.id}</span>
+                      {home.status === 'damaged' && <span className="bg-red-500/30 text-red-300 text-xs px-2 py-0.5 rounded-full font-semibold">⚠ DAMAGE</span>}
+                      {home.status === 'checked' && <span className="bg-green-500/30 text-green-300 text-xs px-2 py-0.5 rounded-full font-semibold">✓ OK</span>}
+                      {home.status === 'scanning' && <span className="bg-cyan-500/30 text-cyan-300 text-xs px-2 py-0.5 rounded-full font-semibold animate-pulse">◉ SCANNING</span>}
+                      {home.status === 'idle' && <span className="bg-gray-500/30 text-gray-400 text-xs px-2 py-0.5 rounded-full font-semibold">○ QUEUED</span>}
+                    </div>
+                    <p className="text-white text-sm font-medium">{home.owner}</p>
+                    <p className="text-gray-400 text-xs">{home.address}</p>
+                    {home.damagePct > 0 && (
+                      <p className="text-red-300 text-xs mt-1 font-semibold">{home.damagePct}% structural damage</p>
+                    )}
+                    {home.paidOut && (
+                      <p className="text-green-300 text-xs mt-1">💰 {home.payout} ETH paid to owner</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Live signal feed */}
+              <div className="bg-black/30 rounded-lg p-3 max-h-32 overflow-y-auto">
+                <p className="text-gray-400 text-xs mb-2 font-medium">📡 Incoming satellite / drone telemetry</p>
+                {feedLines.length === 0 ? (
+                  <p className="text-gray-500 text-xs">Waiting for fleet scan...</p>
+                ) : (
+                  feedLines.map((line, i) => (
+                    <p key={i} className={`text-xs font-mono ${line.includes('PAYOUT') ? 'text-green-300 font-semibold' : line.includes('DAMAGE') ? 'text-red-300' : 'text-cyan-200/80'}`}>
+                      {line}
+                    </p>
+                  ))
+                )}
+              </div>
+
+              {fleetPhase === 'idle' && (
+                <p className="text-gray-400 text-sm mt-3">
+                  Demo: insurer-side view of satellite geolocation + drone damage detection with automatic payout to registered owners.
+                </p>
               )}
             </div>
           </div>
